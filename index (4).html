@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<title>SEMBADA JATENG — Deteksi Dini Rawan Pangan</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g1:#0a2e1a;--g2:#0f4f2e;--g3:#1a7a4a;--g4:#27ae60;
+  --gold:#f4c430;--gold2:#e8a80c;
+  --red:#e74c3c;--blue:#3498db;--purple:#9b59b6;
+  --bg:#f0faf4;--white:#fff;
+  --text:#0d2217;--text2:#2d5a3d;--text3:#6b9a7e;
+  --r:16px;--r2:24px;
+  --sh:0 8px 40px rgba(0,80,30,0.13);
+  --sh2:0 20px 80px rgba(0,80,30,0.18);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+
+/* ─── LOADER ─── */
+#loader{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--g1);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .6s ease;
+}
+#loader.done{opacity:0;pointer-events:none}
+.loader-logo{font-size:2.5rem;font-weight:900;color:#fff;letter-spacing:-1px}
+.loader-logo span{color:var(--gold)}
+.loader-bar{width:200px;height:4px;background:rgba(255,255,255,.15);border-radius:99px;margin-top:1.5rem;overflow:hidden}
+.loader-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--g4));border-radius:99px;animation:fill 1.8s ease forwards}
+@keyframes fill{from{width:0}to{width:100%}}
+.loader-txt{color:rgba(255,255,255,.5);font-size:.82rem;margin-top:.8rem;letter-spacing:.5px}
+
+/* ─── NAV ─── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 3rem;height:68px;
+  background:rgba(10,46,26,.85);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  transition:background .3s;
+}
+.nav-logo{font-size:1.15rem;font-weight:900;color:#fff;letter-spacing:-.3px}
+.nav-logo em{color:var(--gold);font-style:normal}
+.nav-links{display:flex;gap:.2rem}
+.nav-links a{
+  color:rgba(255,255,255,.65);text-decoration:none;
+  font-size:.82rem;font-weight:600;padding:.45rem .9rem;
+  border-radius:99px;transition:all .2s;
+}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.1);color:#fff}
+.nav-cta{
+  background:var(--gold);color:var(--g1)!important;
+  font-weight:800!important;padding:.45rem 1.1rem!important;
+}
+.nav-cta:hover{background:var(--gold2)!important;color:var(--g1)!important}
+
+/* ─── HERO ─── */
+.hero{
+  min-height:100vh;
+  background:linear-gradient(145deg,#051a0d 0%,#0a3320 35%,#0f5535 65%,#1a7a4a 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:5rem 2rem 4rem;text-align:center;
+  position:relative;overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 40%,rgba(39,174,96,.18) 0%,transparent 70%);
+}
+.hero-orb{
+  position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;
+}
+.orb1{width:500px;height:500px;background:rgba(39,174,96,.12);top:-100px;right:-100px}
+.orb2{width:350px;height:350px;background:rgba(244,196,48,.08);bottom:-50px;left:-80px}
+.hero-content{position:relative;max-width:860px}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.8);border-radius:99px;
+  padding:.4rem 1.2rem;font-size:.8rem;font-weight:600;
+  letter-spacing:.8px;text-transform:uppercase;margin-bottom:1.8rem;
+  backdrop-filter:blur(10px);
+}
+.hero-tag::before{content:'🌾';font-size:1rem}
+.hero h1{
+  font-size:clamp(2.2rem,6vw,4.2rem);
+  font-weight:900;color:#fff;line-height:1.08;
+  letter-spacing:-1.5px;margin-bottom:1rem;
+}
+.hero h1 .hl{color:var(--gold)}
+.hero h1 .hl2{color:#6ee8a0}
+.hero-sub{
+  font-size:clamp(.95rem,2vw,1.15rem);
+  color:rgba(255,255,255,.65);max-width:640px;
+  margin:0 auto 2.5rem;line-height:1.75;
+  font-weight:400;
+}
+.hero-sub strong{color:rgba(255,255,255,.9)}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:3.5rem}
+.btn{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.85rem 2rem;border-radius:99px;
+  font-weight:700;font-size:.95rem;cursor:pointer;
+  text-decoration:none;border:none;transition:all .25s;
+}
+.btn-primary{background:var(--gold);color:var(--g1);box-shadow:0 8px 30px rgba(244,196,48,.35)}
+.btn-primary:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 12px 40px rgba(244,196,48,.45)}
+.btn-outline{background:rgba(255,255,255,.08);color:#fff;border:1.5px solid rgba(255,255,255,.2);backdrop-filter:blur(10px)}
+.btn-outline:hover{background:rgba(255,255,255,.15);transform:translateY(-2px)}
+.hero-stats{
+  display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;
+}
+.hstat{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--r);padding:1.2rem 1.8rem;
+  backdrop-filter:blur(15px);min-width:130px;
+  transition:transform .2s,background .2s;
+}
+.hstat:hover{background:rgba(255,255,255,.12);transform:translateY(-4px)}
+.hstat .n{font-size:2rem;font-weight:900;color:var(--gold);line-height:1}
+.hstat .l{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:.3rem;font-weight:500}
+.scroll-ind{
+  position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:.4rem;
+  color:rgba(255,255,255,.35);font-size:.72rem;font-weight:500;
+  animation:bob 2.5s infinite;
+}
+.scroll-ind svg{opacity:.4}
+@keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(10px)}}
+
+/* ─── SECTIONS ─── */
+section{padding:6rem 2rem}
+.wrap{max-width:1180px;margin:0 auto}
+.sec-label{
+  display:inline-flex;align-items:center;gap:.4rem;
+  color:var(--g4);font-size:.75rem;font-weight:800;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:.7rem;
+}
+.sec-title{
+  font-size:clamp(1.8rem,3.5vw,2.6rem);
+  font-weight:900;color:var(--g1);line-height:1.15;
+  letter-spacing:-.5px;margin-bottom:.8rem;
+}
+.sec-desc{
+  color:var(--text3);font-size:1rem;max-width:600px;line-height:1.75;
+  margin-bottom:3rem;
+}
+
+/* ─── CARDS ─── */
+.card{
+  background:var(--white);border-radius:var(--r2);
+  box-shadow:var(--sh);padding:2rem;
+  transition:transform .25s,box-shadow .25s;
+  border:1px solid rgba(0,80,30,.06);
+}
+.card:hover{transform:translateY(-4px);box-shadow:var(--sh2)}
+.card-h{
+  display:flex;align-items:center;gap:.6rem;
+  font-weight:800;font-size:1rem;color:var(--g1);
+  margin-bottom:1.5rem;padding-bottom:1rem;
+  border-bottom:2px solid var(--bg);
+}
+.card-h .ico{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--g3),var(--g4));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;flex-shrink:0;
+}
+
+/* ─── GRID ─── */
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.5rem}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem}
+
+/* ─── KPI ─── */
+.kpi-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1.2rem}
+.kpi{
+  background:var(--white);border-radius:var(--r2);padding:1.6rem;
+  box-shadow:var(--sh);position:relative;overflow:hidden;
+  border:1px solid rgba(0,80,30,.06);
+  transition:transform .25s;
+}
+.kpi:hover{transform:translateY(-4px)}
+.kpi::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  border-radius:0 0 var(--r2) var(--r2);
+}
+.kpi.green::after{background:linear-gradient(90deg,var(--g3),var(--g4))}
+.kpi.red::after{background:linear-gradient(90deg,#c0392b,var(--red))}
+.kpi.gold::after{background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.kpi.blue::after{background:linear-gradient(90deg,#2980b9,var(--blue))}
+.kpi .icon{font-size:1.6rem;margin-bottom:.6rem}
+.kpi .val{font-size:2rem;font-weight:900;color:var(--g1);line-height:1}
+.kpi .lbl{font-size:.78rem;font-weight:600;color:var(--text3);margin-top:.3rem}
+.kpi .sub{font-size:.72rem;color:var(--text3);margin-top:.4rem;line-height:1.4}
+
+/* ─── PIPELINE ─── */
+.pipeline-wrap{
+  display:flex;gap:0;overflow-x:auto;
+  border-radius:var(--r2);overflow:hidden;
+  box-shadow:var(--sh);
+}
+.pipe-step{
+  flex:1;min-width:140px;background:var(--white);
+  padding:1.5rem 1.2rem;text-align:center;
+  position:relative;border-right:1px solid rgba(0,80,30,.07);
+  transition:background .2s;
+}
+.pipe-step:last-child{border-right:none}
+.pipe-step:hover{background:var(--bg)}
+.pipe-step::after{
+  content:'›';position:absolute;
+  right:-10px;top:50%;transform:translateY(-50%);
+  color:var(--g4);font-size:1.5rem;z-index:1;
+  font-weight:900;
+}
+.pipe-step:last-child::after{display:none}
+.ps-num{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--g3),var(--g4));
+  color:#fff;font-size:.75rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto .6rem;
+}
+.ps-ico{font-size:1.6rem;margin-bottom:.4rem}
+.ps-nm{font-size:.82rem;font-weight:800;color:var(--g1)}
+.ps-ds{font-size:.72rem;color:var(--text3);margin-top:.25rem;line-height:1.4}
+
+/* ─── TABLE ─── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--g1);color:#fff;padding:.8rem 1.1rem;text-align:left;font-size:.78rem;font-weight:700;letter-spacing:.3px}
+th:first-child{border-radius:12px 0 0 0}
+th:last-child{border-radius:0 12px 0 0}
+td{padding:.75rem 1.1rem;border-bottom:1px solid #e8f5ee}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f7fdf9}
+.bdg{
+  display:inline-block;border-radius:99px;
+  padding:.2rem .8rem;font-size:.72rem;font-weight:700;
+}
+.bdg-g{background:#d4edda;color:#145a28}
+.bdg-r{background:#fde8e8;color:#8b1515}
+.bdg-y{background:#fef3cd;color:#7a4f00}
+.bdg-b{background:#daeaf7;color:#1a4a70}
+.bdg-gray{background:#eee;color:#555}
+
+/* ─── EDA EXPLAINER BOXES ─── */
+.explain-box{
+  background:linear-gradient(135deg,#f0fdf4,#e8f5ee);
+  border-left:4px solid var(--g4);
+  border-radius:0 var(--r) var(--r) 0;
+  padding:1rem 1.2rem;margin-bottom:1rem;
+  font-size:.88rem;color:var(--text2);line-height:1.65;
+}
+.explain-box.gold{border-left-color:var(--gold);background:linear-gradient(135deg,#fffdf0,#fef9e0)}
+.explain-box.red{border-left-color:var(--red);background:linear-gradient(135deg,#fff5f5,#fdeaea)}
+.explain-box strong{color:var(--g1)}
+
+/* ─── CLUSTER CARDS ─── */
+.cluster-card{
+  border-radius:var(--r2);overflow:hidden;
+  box-shadow:var(--sh);transition:transform .25s;
+}
+.cluster-card:hover{transform:translateY(-5px)}
+.cc-head{
+  padding:1.5rem;color:#fff;
+  display:flex;align-items:center;gap:.8rem;
+}
+.cc-head .label{font-weight:900;font-size:1.05rem}
+.cc-head .count{font-size:.82rem;opacity:.8;margin-top:.2rem}
+.cc-h-green{background:linear-gradient(135deg,#0f5535,var(--g4))}
+.cc-h-red{background:linear-gradient(135deg,#8b1515,var(--red))}
+.cc-body{background:var(--white);padding:1.5rem}
+.cc-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.55rem 0;border-bottom:1px solid #e8f5ee;
+  font-size:.87rem;
+}
+.cc-row:last-child{border-bottom:none}
+.cc-row .nm{color:var(--text3);font-weight:500}
+.cc-row .vl{font-weight:800;color:var(--g1)}
+.progress-mini{
+  width:60px;height:6px;background:#e8f5ee;border-radius:99px;overflow:hidden;
+}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--g3),var(--g4))}
+.progress-fill.red{background:linear-gradient(90deg,#c0392b,var(--red))}
+
+/* ─── MODEL CARDS ─── */
+.model-card{
+  background:var(--white);border-radius:var(--r2);
+  padding:1.8rem;box-shadow:var(--sh);
+  border:2px solid transparent;
+  transition:all .25s;position:relative;overflow:hidden;
+}
+.model-card:hover{transform:translateY(-5px);box-shadow:var(--sh2)}
+.model-card.winner{
+  border-color:var(--gold);
+  background:linear-gradient(135deg,#fffef7,#fff);
+}
+.model-card.winner::before{
+  content:'🏆 TERBAIK';
+  position:absolute;top:0;right:0;
+  background:var(--gold);color:var(--g1);
+  font-size:.7rem;font-weight:900;
+  padding:.35rem 1rem;
+  border-radius:0 var(--r2) 0 var(--r);
+}
+.model-name{font-weight:900;font-size:1.1rem;color:var(--g1);margin-bottom:.3rem}
+.model-desc{font-size:.8rem;color:var(--text3);margin-bottom:1.3rem;line-height:1.5}
+.metric-row{margin-bottom:.9rem}
+.metric-lbl{display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:.3rem}
+.metric-lbl .nm{color:var(--text3);font-weight:600}
+.metric-lbl .vl{font-weight:800;color:var(--g1)}
+.metric-bar{height:8px;background:#e8f5ee;border-radius:99px;overflow:hidden}
+.metric-fill{height:100%;border-radius:99px;transition:width 1.5s ease}
+.fill-blue{background:linear-gradient(90deg,var(--blue),#5dade2)}
+.fill-green{background:linear-gradient(90deg,var(--g3),var(--g4))}
+.fill-gold{background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.fill-bad{background:linear-gradient(90deg,#e74c3c,#ec7063)}
+.cv-badge{
+  display:inline-block;background:var(--bg);
+  border:1px solid #c8e6d4;border-radius:99px;
+  padding:.3rem .9rem;font-size:.76rem;font-weight:700;
+  color:var(--g2);margin-top:.5rem;
+}
+
+/* ─── FEATURE IMPORTANCE ─── */
+.fi-item{padding:.7rem 0;border-bottom:1px solid #e8f5ee}
+.fi-item:last-child{border-bottom:none}
+.fi-top{display:flex;align-items:center;gap:.7rem;margin-bottom:.4rem}
+.fi-rank{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:900;
+}
+.fi-rank.r1{background:var(--gold);color:var(--g1)}
+.fi-rank.r2{background:#c0c0c0;color:#fff}
+.fi-rank.r3{background:#cd7f32;color:#fff}
+.fi-rank.rn{background:var(--bg);color:var(--text3)}
+.fi-name{font-size:.88rem;font-weight:700;color:var(--g1);flex:1}
+.fi-val{font-size:.85rem;font-weight:900;color:var(--g2)}
+.fi-bar-wrap{height:6px;background:#e8f5ee;border-radius:99px;overflow:hidden;margin-left:33px}
+.fi-bar{height:100%;border-radius:99px;transition:width 1.5s ease}
+.fi-desc{font-size:.75rem;color:var(--text3);margin-top:.25rem;margin-left:33px;line-height:1.4}
+
+/* ─── PREDICTOR SECTION ─── */
+#predictor{
+  background:linear-gradient(145deg,#051a0d,#0a3320,#0f5535);
+  position:relative;overflow:hidden;
+}
+#predictor::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 70% at 80% 50%,rgba(39,174,96,.15),transparent);
+}
+#predictor .sec-label{color:var(--gold)}
+#predictor .sec-title{color:#fff}
+#predictor .sec-desc{color:rgba(255,255,255,.6)}
+.pred-wrap{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:2rem;position:relative;
+}
+@media(max-width:768px){.pred-wrap{grid-template-columns:1fr}}
+.pred-form{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--r2);padding:2rem;
+  backdrop-filter:blur(20px);
+}
+.pred-title{font-weight:800;font-size:1rem;color:#fff;margin-bottom:1.5rem}
+.slider-item{margin-bottom:1.4rem}
+.slider-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
+.slider-name{font-size:.8rem;font-weight:700;color:rgba(255,255,255,.8)}
+.slider-val{
+  font-size:.85rem;font-weight:900;color:var(--gold);
+  background:rgba(244,196,48,.12);border-radius:99px;
+  padding:.15rem .6rem;
+}
+.slider-hint{font-size:.68rem;color:rgba(255,255,255,.35);margin-top:.2rem}
+input[type=range]{
+  width:100%;appearance:none;height:5px;
+  background:rgba(255,255,255,.15);border-radius:99px;
+  outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  appearance:none;width:18px;height:18px;
+  border-radius:50%;background:var(--gold);
+  box-shadow:0 2px 8px rgba(244,196,48,.5);
+  cursor:pointer;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.pred-btn{
+  width:100%;margin-top:.5rem;
+  background:linear-gradient(135deg,var(--g4),var(--gold));
+  color:var(--g1);border:none;border-radius:var(--r);
+  padding:1.1rem;font-size:1rem;font-weight:900;
+  cursor:pointer;transition:all .25s;
+  letter-spacing:-.2px;
+}
+.pred-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(244,196,48,.4)}
+.pred-result{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--r2);padding:2rem;
+  backdrop-filter:blur(20px);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  text-align:center;
+}
+.gauge-wrap{position:relative;width:200px;height:110px;margin:0 auto 1.5rem}
+.gauge-canvas{width:200px;height:110px}
+.gauge-val{
+  position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  font-size:2.8rem;font-weight:900;color:#fff;line-height:1;
+}
+.gauge-lbl{font-size:.7rem;color:rgba(255,255,255,.4);margin-top:.1rem}
+.result-cluster{
+  border-radius:99px;padding:.5rem 1.5rem;
+  font-weight:900;font-size:.95rem;margin-bottom:1rem;
+  display:inline-block;
+}
+.rc-h{background:rgba(39,174,96,.25);color:#6ee8a0;border:1px solid rgba(39,174,96,.3)}
+.rc-l{background:rgba(231,76,60,.25);color:#f1948a;border:1px solid rgba(231,76,60,.3)}
+.rc-m{background:rgba(244,196,48,.2);color:#ffd966;border:1px solid rgba(244,196,48,.3)}
+.result-title{color:#fff;font-size:1.1rem;font-weight:800;margin-bottom:.5rem}
+.result-desc{color:rgba(255,255,255,.55);font-size:.85rem;line-height:1.7;margin-bottom:1.2rem}
+.result-tips{text-align:left;width:100%}
+.tip-item{
+  display:flex;gap:.6rem;align-items:flex-start;
+  font-size:.8rem;color:rgba(255,255,255,.6);
+  margin-bottom:.5rem;line-height:1.5;
+}
+.tip-item .dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  margin-top:.4rem;
+}
+.dot-g{background:var(--g4)}
+.dot-r{background:var(--red)}
+.dot-y{background:var(--gold)}
+.waiting{
+  color:rgba(255,255,255,.3);font-size:.9rem;
+  font-style:italic;
+}
+
+/* ─── FAQ / EXPLAINER ─── */
+.faq-item{
+  border-bottom:1px solid #e8f5ee;
+  cursor:pointer;transition:all .2s;
+}
+.faq-item:last-child{border-bottom:none}
+.faq-q{
+  padding:1.2rem 0;display:flex;
+  justify-content:space-between;align-items:center;
+  font-weight:700;font-size:.95rem;color:var(--g1);
+  user-select:none;
+}
+.faq-q .arrow{transition:transform .3s;font-size:.8rem;color:var(--g4)}
+.faq-item.open .faq-q .arrow{transform:rotate(180deg)}
+.faq-a{
+  font-size:.88rem;color:var(--text2);line-height:1.75;
+  max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s;
+  padding:0 0;
+}
+.faq-item.open .faq-a{max-height:300px;padding-bottom:1.2rem}
+
+/* ─── POLICY ─── */
+.policy-card{
+  background:var(--white);border-radius:var(--r2);
+  padding:1.8rem;box-shadow:var(--sh);
+  border-top:4px solid var(--g4);
+  transition:transform .25s;
+  position:relative;
+}
+.policy-card:hover{transform:translateY(-4px)}
+.policy-card:nth-child(1){border-top-color:var(--g4)}
+.policy-card:nth-child(2){border-top-color:var(--gold)}
+.policy-card:nth-child(3){border-top-color:var(--blue)}
+.policy-card:nth-child(4){border-top-color:var(--red)}
+.policy-ico{font-size:2.2rem;margin-bottom:.8rem}
+.policy-title{font-weight:900;font-size:1.05rem;color:var(--g1);margin-bottom:.5rem}
+.policy-tag{
+  display:inline-block;font-size:.68rem;font-weight:800;
+  border-radius:99px;padding:.15rem .6rem;margin-bottom:.8rem;
+  background:#e8f5ee;color:var(--g3);
+}
+.policy-card:nth-child(2) .policy-tag{background:#fef9e0;color:#7a4f00}
+.policy-card:nth-child(3) .policy-tag{background:#daeaf7;color:#1a4a70}
+.policy-card:nth-child(4) .policy-tag{background:#fde8e8;color:#8b1515}
+.policy-list{list-style:none;font-size:.85rem;color:var(--text2)}
+.policy-list li{
+  padding:.4rem 0;border-bottom:1px solid var(--bg);
+  display:flex;gap:.6rem;line-height:1.5;
+}
+.policy-list li:last-child{border-bottom:none}
+.policy-list li::before{content:'→';color:var(--g4);font-weight:700;flex-shrink:0}
+
+/* ─── FOOTER ─── */
+footer{
+  background:var(--g1);
+  padding:3rem 2rem;
+  text-align:center;
+}
+.footer-logo{font-size:1.5rem;font-weight:900;color:#fff;margin-bottom:.5rem}
+.footer-logo span{color:var(--gold)}
+.footer-desc{color:rgba(255,255,255,.4);font-size:.82rem;max-width:500px;margin:0 auto 1.5rem;line-height:1.6}
+.footer-tags{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.footer-tag{
+  background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);
+  border-radius:99px;padding:.25rem .8rem;font-size:.72rem;font-weight:600;
+}
+.footer-copy{color:rgba(255,255,255,.25);font-size:.75rem}
+.footer-copy a{color:var(--gold);text-decoration:none}
+
+/* ─── REVEAL ─── */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-l{opacity:0;transform:translateX(-40px);transition:opacity .8s ease,transform .8s ease}
+.reveal-l.visible{opacity:1;transform:translateX(0)}
+.reveal-r{opacity:0;transform:translateX(40px);transition:opacity .8s ease,transform .8s ease}
+.reveal-r.visible{opacity:1;transform:translateX(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}
+
+/* ─── TOOLTIP ─── */
+.tip{position:relative;display:inline-block;cursor:help;border-bottom:1px dashed var(--g4)}
+.tip::after{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--g1);color:#fff;font-size:.72rem;font-weight:500;
+  padding:.4rem .8rem;border-radius:8px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+  z-index:10;
+}
+.tip:hover::after{opacity:1}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){
+  nav .nav-links{display:none}
+  .hero-stats{gap:.8rem}
+  .hstat .n{font-size:1.6rem}
+  .pipeline-wrap{border-radius:var(--r)}
+  section{padding:4rem 1.2rem}
+}
+
+/* ─── SECTION ALT BG ─── */
+.sec-alt{background:#f7fdf9}
+.sec-light{background:#f4fdf7;padding:80px 0}.sec-dark{
+  background:linear-gradient(135deg,var(--g1),var(--g2));
+}
+.sec-dark .sec-label{color:var(--gold)}
+.sec-dark .sec-title,.sec-dark .card-h{color:#fff}
+.sec-dark .sec-desc{color:rgba(255,255,255,.55)}
+.sec-dark .card{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1);color:#fff}
+.sec-dark td{color:rgba(255,255,255,.8);border-bottom-color:rgba(255,255,255,.08)}
+.sec-dark tr:hover td{background:rgba(255,255,255,.05)}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-logo"><span>SEMBADA</span> JATENG</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+  <div class="loader-txt">Memuat analisis...</div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo"><em>SEMBADA</em> JATENG</div>
+  <div class="nav-links">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#eda">Data</a>
+    <a href="#peta">Peta</a><a href="#tabel">Tabel</a>
+    <a href="#clustering">Klaster</a>
+    <a href="#model">Model</a>
+    <a href="#fitur">Fitur</a>
+    <a href="#predictor">Prediktor</a>
+    <a href="#kebijakan">Kebijakan</a>
+    <a href="#faq" class="nav-cta">Panduan</a>
+  </div>
+</nav>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-orb orb1"></div>
+  <div class="hero-orb orb2"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Analisis Machine Learning · Jawa Tengah 2024</div>
+    <h1>
+      <span class="hl">SEMBADA JATENG</span><br/>
+      <span class="hl2">Deteksi Dini</span> Wilayah<br/>Rawan Pangan
+    </h1>
+    <p class="hero-sub">
+      Platform analisis berbasis <strong>Machine Learning</strong> untuk memprediksi
+      Indeks Ketahanan Pangan (IKP) di <strong>576 kecamatan Jawa Tengah</strong>
+      guna mendukung kebijakan pangan nasional yang lebih tepat sasaran.
+    </p>
+    <div class="hero-btns">
+      <a href="#predictor" class="btn btn-primary">🔮 Coba Prediktor IKP</a>
+      <a href="#overview" class="btn btn-outline">📊 Lihat Analisis</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="n" data-target="576">0</div><div class="l">Kecamatan</div></div>
+      <div class="hstat"><div class="n" data-target="8">0</div><div class="l">Variabel</div></div>
+      <div class="hstat"><div class="n" data-pct="91.8">0%</div><div class="l">Akurasi R²</div></div>
+      <div class="hstat"><div class="n" data-target="2">0</div><div class="l">Kelompok Risiko</div></div>
+      <div class="hstat"><div class="n" data-target="574">0</div><div class="l">Kec. Terpetakan</div></div>
+    </div>
+  </div>
+  <div class="scroll-ind">
+    <span>Scroll</span>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 12L2 6l1.4-1.4L8 9.2l4.6-4.6L14 6z"/></svg>
+  </div>
+</section>
+
+<!-- ═══════════════ OVERVIEW ═══════════════ -->
+<section id="overview">
+  <div class="wrap">
+    <p class="sec-label">📌 Ringkasan Proyek</p>
+    <h2 class="sec-title">Apa Itu SEMBADA JATENG?</h2>
+    <p class="sec-desc">Platform ini menggunakan kecerdasan buatan untuk mendeteksi wilayah yang berisiko kekurangan pangan di Jawa Tengah — sebelum krisis terjadi.</p>
+
+    <div class="explain-box reveal">
+      💡 <strong>Bahasa Sederhana:</strong> Bayangkan dokter yang bisa memprediksi penyakit sebelum gejalanya parah. SEMBADA JATENG bekerja sama — menggunakan data sosial-ekonomi untuk memprediksi kondisi pangan suatu daerah, sehingga pemerintah bisa bertindak LEBIH AWAL.
+    </div>
+
+    <div class="pipeline-wrap reveal" style="margin:2rem 0">
+      <div class="pipe-step">
+        <div class="ps-num">1</div>
+        <div class="ps-ico">📥</div>
+        <div class="ps-nm">Kumpul Data</div>
+        <div class="ps-ds">576 kecamatan, 11 variabel awal</div>
+      </div>
+      <div class="pipe-step">
+        <div class="ps-num">2</div>
+        <div class="ps-ico">🔧</div>
+        <div class="ps-nm">Bersihkan</div>
+        <div class="ps-ds">Isi data kosong, hapus kolom tidak relevan</div>
+      </div>
+      <div class="pipe-step">
+        <div class="ps-num">3</div>
+        <div class="ps-ico">🔍</div>
+        <div class="ps-nm">Eksplorasi</div>
+        <div class="ps-ds">Temukan pola & hubungan antar variabel</div>
+      </div>
+      <div class="pipe-step">
+        <div class="ps-num">4</div>
+        <div class="ps-ico">🗂️</div>
+        <div class="ps-nm">Klasterisasi</div>
+        <div class="ps-ds">Kelompokkan kecamatan berdasarkan risiko</div>
+      </div>
+      <div class="pipe-step">
+        <div class="ps-num">5</div>
+        <div class="ps-ico">🤖</div>
+        <div class="ps-nm">Bangun Model</div>
+        <div class="ps-ds">Latih 3 algoritma ML untuk prediksi IKP</div>
+      </div>
+      <div class="pipe-step">
+        <div class="ps-num">6</div>
+        <div class="ps-ico">📋</div>
+        <div class="ps-nm">Kebijakan</div>
+        <div class="ps-ds">Rekomendasi berbasis data untuk pemangku kebijakan</div>
+      </div>
+    </div>
+
+    <div class="kpi-wrap reveal">
+      <div class="kpi green d1">
+        <div class="icon">🏙️</div>
+        <div class="val counter" data-target="576">0</div>
+        <div class="lbl">Total Kecamatan</div>
+        <div class="sub">Seluruh wilayah Jawa Tengah dianalisis</div>
+      </div>
+      <div class="kpi red d2">
+        <div class="icon">⚠️</div>
+        <div class="val counter" data-target="509">0</div>
+        <div class="lbl">Wilayah Rawan (L-FSG)</div>
+        <div class="sub">88.4% kecamatan berisiko ketahanan pangan rendah</div>
+      </div>
+      <div class="kpi gold d3">
+        <div class="icon">✅</div>
+        <div class="val counter" data-target="67">0</div>
+        <div class="lbl">Wilayah Aman (H-FSG)</div>
+        <div class="sub">Hanya 11.6% yang ketahanan pangannya baik</div>
+      </div>
+      <div class="kpi blue d4">
+        <div class="icon">🎯</div>
+        <div class="val">91.8%</div>
+        <div class="lbl">Akurasi Model Terbaik</div>
+        <div class="sub">XGBoost berhasil memprediksi IKP dengan R² = 0.9179</div>
+      </div>
+      <div class="kpi green d5">
+        <div class="icon">📉</div>
+        <div class="val">±1.13</div>
+        <div class="lbl">Rata-rata Error Prediksi</div>
+        <div class="sub">Selisih prediksi vs nilai nyata sangat kecil</div>
+      </div>
+      <div class="kpi gold d1">
+        <div class="icon">🔑</div>
+        <div class="val">NCPR</div>
+        <div class="lbl">Faktor Paling Berpengaruh</div>
+        <div class="sub">Rasio kemiskinan kalori — prediktor IKP terkuat</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ EDA ═══════════════ -->
+<section id="eda" class="sec-alt">
+  <div class="wrap">
+    <p class="sec-label">📊 Eksplorasi Data</p>
+    <h2 class="sec-title">Mengenal Data yang Digunakan</h2>
+    <p class="sec-desc">8 variabel sosial-ekonomi dari 576 kecamatan digunakan untuk memprediksi IKP. Ini penjelasan masing-masing variabel dan statistiknya.</p>
+
+    <div class="g2 reveal">
+      <div class="card">
+        <div class="card-h"><div class="ico">📋</div>Statistik Deskriptif — Data Asli</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Variabel</th><th>Rata-rata</th><th>Std Dev</th><th>Min</th><th>Max</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tip" data-tip="Rasio kemiskinan kalori — semakin tinggi semakin buruk">NCPR</span></td><td>0.82</td><td>0.97</td><td>0.03</td><td>5.00</td></tr>
+              <tr><td>Kemiskinan (%)</td><td>14.00</td><td>11.63</td><td>0.05</td><td>60.77</td></tr>
+              <tr><td>Pengeluaran Pangan (%)</td><td>21.54</td><td>8.49</td><td>0.82</td><td>48.13</td></tr>
+              <tr><td>Tanpa Air Bersih (%)</td><td>19.72</td><td>10.11</td><td>0.00</td><td>96.26</td></tr>
+              <tr><td>Lama Sekolah Perempuan (thn)</td><td>8.10</td><td>1.21</td><td>5.25</td><td>12.42</td></tr>
+              <tr><td>Rasio Tenaga Kesehatan</td><td>0.87</td><td>0.78</td><td>0.00</td><td>10.85</td></tr>
+              <tr><td>Angka Kesakitan</td><td>12.47</td><td>8.52</td><td>0.38</td><td>51.97</td></tr>
+              <tr><td>Stunting (%)</td><td>10.98</td><td>6.11</td><td>0.60</td><td>34.65</td></tr>
+              <tr style="background:#e8f5ee"><td><strong>IKP (Target)</strong></td><td><strong>80.96</strong></td><td><strong>7.06</strong></td><td><strong>47.11</strong></td><td><strong>97.40</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="ico">🔗</div>Korelasi Variabel dengan IKP</div>
+        <canvas id="corrChart" height="280"></canvas>
+        <div class="explain-box" style="margin-top:1rem">
+          📖 <strong>Artinya:</strong> Nilai <strong>positif</strong> berarti semakin tinggi variabel → IKP semakin baik. Nilai <strong>negatif</strong> berarti sebaliknya. Lama sekolah perempuan punya dampak terbesar secara positif.
+        </div>
+      </div>
+    </div>
+
+    <div class="g2 reveal" style="margin-top:1.5rem">
+      <div class="card">
+        <div class="card-h"><div class="ico">📈</div>Distribusi IKP — 576 Kecamatan</div>
+        <canvas id="distChart" height="220"></canvas>
+        <div class="explain-box" style="margin-top:1rem">
+          📖 <strong>Artinya:</strong> Sebagian besar kecamatan punya IKP antara 75–90. IKP terendah 47.11 (Banjarnegara–Wanayasa) dan tertinggi 97.40.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="ico">🧬</div>PCA — Reduksi Dimensi</div>
+        <canvas id="pcaBar" height="200"></canvas>
+        <div class="explain-box" style="margin-top:1rem">
+          📖 <strong>Apa itu PCA?</strong> Teknik meringkas banyak variabel menjadi sedikit "komponen utama" untuk memudahkan visualisasi. PC1 (31%) menangkap variasi terbesar, PC2 (16.6%) kedua terbesar.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ CLUSTERING ═══════════════ -->
+<section id="clustering">
+  <div class="wrap">
+    <p class="sec-label">🗂️ Analisis Klaster</p>
+    <h2 class="sec-title">Mengelompokkan Wilayah Berdasarkan Risiko</h2>
+    <p class="sec-desc">Metode terbaik: <strong>Agglomerative Clustering (k=2)</strong> dengan Ward linkage. Seluruh kecamatan dibagi jadi 2 kelompok besar.</p>
+
+    <div class="explain-box reveal">
+      💡 <strong>Analogi Sederhana:</strong> Bayangkan kita mengelompokkan 576 siswa berdasarkan nilai ujian dan kondisi ekonominya. Ada yang masuk kelompok "butuh perhatian ekstra" dan yang "sudah mandiri". Begitu pula dengan kecamatan!
+    </div>
+
+    <div class="g2 reveal" style="margin-top:1.5rem">
+      <div class="card">
+        <div class="card-h"><div class="ico">🏆</div>Perbandingan Metode Clustering</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Metode</th><th>k</th><th>Silhouette ↑</th><th>Davies-Bouldin ↓</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>K-Means</td><td>2</td><td>0.1754</td><td>1.8251</td>
+                <td><span class="bdg bdg-b">Runner-up</span></td>
+              </tr>
+              <tr style="background:#f7fdf9">
+                <td><strong>Agglomerative</strong></td><td><strong>2</strong></td>
+                <td><strong>0.1890 ✓</strong></td><td><strong>1.2188 ✓</strong></td>
+                <td><span class="bdg bdg-y">✨ Terbaik</span></td>
+              </tr>
+              <tr>
+                <td>K-Medoids</td><td>—</td><td>—</td><td>—</td>
+                <td><span class="bdg bdg-gray">⚠️ Error NumPy 2.x</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="explain-box" style="margin-top:1rem">
+          📖 <strong>K-Medoids tidak berjalan</strong> karena ada masalah kompatibilitas library dengan versi Python yang digunakan — bukan kesalahan analisis.
+        </div>
+        <canvas id="clusterMetric" height="180" style="margin-top:1rem"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="ico">🥧</div>Distribusi 576 Kecamatan</div>
+        <canvas id="clusterPie" height="220"></canvas>
+        <div style="display:flex;gap:1rem;justify-content:center;margin-top:1rem;font-size:.85rem;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:.4rem"><span style="width:12px;height:12px;background:#e74c3c;border-radius:50%;display:inline-block"></span>L-FSG: 509 (88.4%)</span>
+          <span style="display:flex;align-items:center;gap:.4rem"><span style="width:12px;height:12px;background:#27ae60;border-radius:50%;display:inline-block"></span>H-FSG: 67 (11.6%)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2 reveal" style="margin-top:1.5rem">
+      <div class="cluster-card">
+        <div class="cc-head cc-h-green">
+          <div>
+            <div class="label">✅ H-FSG — Ketahanan Pangan Tinggi</div>
+            <div class="count">67 kecamatan · 11.6% dari Jawa Tengah</div>
+          </div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-row"><span class="nm">Rata-rata IKP</span><span class="vl" style="color:#27ae60">Lebih Tinggi (>85)</span></div>
+          <div class="cc-row"><span class="nm">NCPR</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Rendah</span><div class="progress-mini"><div class="progress-fill" style="width:20%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Kemiskinan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Rendah</span><div class="progress-mini"><div class="progress-fill" style="width:15%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Lama Sekolah Perempuan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Tinggi</span><div class="progress-mini"><div class="progress-fill" style="width:85%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Rasio Tenaga Kesehatan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Baik</span><div class="progress-mini"><div class="progress-fill" style="width:75%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Food Security Score</span><span class="vl" style="color:#27ae60;font-size:1.1rem">0.75</span></div>
+        </div>
+      </div>
+      <div class="cluster-card">
+        <div class="cc-head cc-h-red">
+          <div>
+            <div class="label">⚠️ L-FSG — Ketahanan Pangan Rendah</div>
+            <div class="count">509 kecamatan · 88.4% dari Jawa Tengah</div>
+          </div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-row"><span class="nm">Rata-rata IKP</span><span class="vl" style="color:#e74c3c">Lebih Rendah (<82)</span></div>
+          <div class="cc-row"><span class="nm">NCPR</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Tinggi</span><div class="progress-mini"><div class="progress-fill red" style="width:78%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Kemiskinan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Tinggi</span><div class="progress-mini"><div class="progress-fill red" style="width:65%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Lama Sekolah Perempuan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Rendah</span><div class="progress-mini"><div class="progress-fill red" style="width:35%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Rasio Tenaga Kesehatan</span><div style="display:flex;align-items:center;gap:.5rem"><span class="vl">Rendah</span><div class="progress-mini"><div class="progress-fill red" style="width:25%"></div></div></div></div>
+          <div class="cc-row"><span class="nm">Food Security Score</span><span class="vl" style="color:#e74c3c;font-size:1.1rem">0.25</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- PETA INTERAKTIF -->
+<section id="peta" class="sec-dark">
+  <div class="wrap">
+    <p class="sec-label">🗺️ Peta Interaktif</p>
+    <h2 class="sec-title">Sebaran Klaster di Seluruh Jawa Tengah</h2>
+    <p class="sec-desc">Peta interaktif menampilkan <strong>572 kecamatan</strong> di Jawa Tengah hasil clustering machine learning. Kecamatan berwarna <span style="color:#27ae60;font-weight:700">hijau</span> = ketahanan pangan tinggi (H-FSG), <span style="color:#e74c3c;font-weight:700">merah</span> = perlu perhatian (L-FSG). Klik marker untuk detail.</p>
+
+    <div class="explain-box reveal" style="background:rgba(255,255,255,.07);border-left-color:var(--gold);color:rgba(255,255,255,.8)">
+      💡 <strong>Cara membaca peta:</strong> Marker <span style="color:#27ae60">● Hijau</span> = H-FSG (Ketahanan Pangan Tinggi). Marker <span style="color:#e74c3c">● Merah</span> = L-FSG (Rawan Pangan). Ukuran marker menunjukkan estimasi jumlah kecamatan di kabupaten tersebut.
+    </div>
+
+    <div class="card reveal" style="margin-top:1.5rem;padding:0;overflow:hidden;background:transparent;border:none;box-shadow:none">
+      <div id="map" style="height:520px;border-radius:var(--r2);overflow:hidden;box-shadow:var(--sh2)"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem">
+      <div class="card reveal d1" style="border-left:4px solid #27ae60">
+        <div style="display:flex;align-items:center;gap:.6rem;font-weight:800;color:#0a2e1a;margin-bottom:.5rem">
+          <span style="color:#27ae60;font-size:1.2rem">●</span> H-FSG — Ketahanan Tinggi
+        </div>
+        <div style="font-size:.85rem;color:var(--text3);line-height:1.6">
+          Dominan di wilayah perkotaan (Semarang, Solo, Salatiga) dan beberapa kabupaten dengan akses layanan kesehatan baik.
+        </div>
+        <div style="margin-top:.8rem;font-size:1.5rem;font-weight:900;color:#27ae60">67 <span style="font-size:.8rem;font-weight:500;color:var(--text3)">kecamatan</span></div>
+      </div>
+      <div class="card reveal d2" style="border-left:4px solid #e74c3c">
+        <div style="display:flex;align-items:center;gap:.6rem;font-weight:800;color:#0a2e1a;margin-bottom:.5rem">
+          <span style="color:#e74c3c;font-size:1.2rem">●</span> L-FSG — Rawan Pangan
+        </div>
+        <div style="font-size:.85rem;color:var(--text3);line-height:1.6">
+          Dominan di wilayah pegunungan selatan (Banjarnegara, Wonosobo, Wonogiri) dan pesisir terpencil.
+        </div>
+        <div style="margin-top:.8rem;font-size:1.5rem;font-weight:900;color:#e74c3c">509 <span style="font-size:.8rem;font-weight:500;color:var(--text3)">kecamatan</span></div>
+      </div>
+      <div class="card reveal d3" style="border-left:4px solid var(--gold)">
+        <div style="display:flex;align-items:center;gap:.6rem;font-weight:800;color:#0a2e1a;margin-bottom:.5rem">
+          🎯 Wilayah Prioritas Intervensi
+        </div>
+        <div style="font-size:.85rem;color:var(--text3);line-height:1.6">
+          Banjarnegara-Wanayasa memiliki IKP terendah (47.11). Cilacap, Brebes, dan Pemalang butuh perhatian segera.
+        </div>
+        <div style="margin-top:.8rem;font-size:1.5rem;font-weight:900;color:var(--gold)">IKP<br><span style="font-size:.8rem;font-weight:500;color:var(--text3)">min 47.11 — Banjarnegara</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ═══════════════ MODEL ═══════════════ -->
+<section id="model" class="sec-alt">
+  <div class="wrap">
+    <p class="sec-label">🤖 Machine Learning</p>
+    <h2 class="sec-title">3 Model AI untuk Prediksi IKP</h2>
+    <p class="sec-desc">Tiga algoritma dilatih dan dibandingkan pada 460 data latih dan 116 data uji, dengan validasi silang 5-fold.</p>
+
+    <div class="explain-box reveal">
+      💡 <strong>Analoginya seperti ini:</strong> Kita punya 3 "dokter" yang berbeda untuk mendiagnosis kondisi pangan suatu daerah. Kita uji ketiganya dengan data yang sama, lalu pilih yang paling akurat. Pemenangnya: <strong>XGBoost</strong>!
+    </div>
+
+    <div class="g3 reveal" style="margin-top:1.5rem">
+      <div class="model-card">
+        <div class="model-name">📏 Linear Regression</div>
+        <div class="model-desc">Model paling sederhana — mencari garis lurus terbaik yang menghubungkan variabel dengan IKP. Cepat tapi kurang fleksibel untuk data kompleks.</div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">R² Score (akurasi)</span><span class="vl">0.8404</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-blue" style="width:0" data-w="84"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">MAE (error rata-rata)</span><span class="vl">1.5144 ↑ terburuk</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-bad" style="width:0" data-w="100"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">RMSE</span><span class="vl">2.7825</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-bad" style="width:0" data-w="100"></div></div>
+        </div>
+        <div class="cv-badge">CV 5-fold: 0.8343 ± 0.1238</div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-name">🌲 Random Forest</div>
+        <div class="model-desc">Gabungan ratusan "pohon keputusan" yang voting bersama. Lebih pintar dari regresi linier dan tahan terhadap data tidak beraturan.</div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">R² Score (akurasi)</span><span class="vl">0.9083</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-green" style="width:0" data-w="90.8"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">MAE (error rata-rata)</span><span class="vl">1.3149</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-green" style="width:0" data-w="75"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">RMSE</span><span class="vl">2.1088</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-green" style="width:0" data-w="76"></div></div>
+        </div>
+        <div class="cv-badge">CV 5-fold: 0.8950 ± 0.0490</div>
+      </div>
+
+      <div class="model-card winner">
+        <div class="model-name">⚡ XGBoost</div>
+        <div class="model-desc">Algoritma paling canggih — belajar dari kesalahan secara bertahap dan sangat efisien. Menjadi standar industri untuk prediksi data tabular.</div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">R² Score (akurasi)</span><span class="vl" style="color:#f4c430">0.9179 🏆</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-gold" style="width:0" data-w="91.8"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">MAE (error rata-rata)</span><span class="vl" style="color:#f4c430">1.1331 ✓ terbaik</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-gold" style="width:0" data-w="65"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-lbl"><span class="nm">RMSE</span><span class="vl" style="color:#f4c430">1.9953 ✓ terbaik</span></div>
+          <div class="metric-bar"><div class="metric-fill fill-gold" style="width:0" data-w="72"></div></div>
+        </div>
+        <div class="cv-badge" style="background:#fef9e0;border-color:#f4c430;color:#7a4f00">CV 5-fold: 0.9272 ± 0.0326 ✓</div>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:1.5rem">
+      <div class="card-h"><div class="ico">📊</div>Perbandingan Visual 3 Model</div>
+      <canvas id="modelChart" height="240"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FITUR ═══════════════ -->
+<section id="fitur">
+  <div class="wrap">
+    <p class="sec-label">🔑 Kepentingan Fitur</p>
+    <h2 class="sec-title">Apa yang Paling Mempengaruhi IKP?</h2>
+    <p class="sec-desc">Menggunakan teknik <em>Permutation Importance</em> dan <em>SHAP</em> untuk memahami kontribusi setiap variabel terhadap prediksi.</p>
+
+    <div class="explain-box reveal">
+      💡 <strong>Apa itu SHAP?</strong> SHAP (SHapley Additive exPlanations) adalah teknik yang menjelaskan <em>mengapa</em> model membuat prediksi tertentu — seperti menanyakan kepada AI: "Mengapa kamu bilang daerah ini rawan pangan?"
+    </div>
+
+    <div class="g2 reveal" style="margin-top:1.5rem">
+      <div class="card">
+        <div class="card-h"><div class="ico">🔍</div>Permutation Importance (XGBoost)</div>
+        <div id="fiList"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="ico">📊</div>Perbandingan Antar Model</div>
+        <canvas id="fiChart" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:1.5rem">
+      <div class="card-h"><div class="ico">🧠</div>Insight SHAP — 5 Wilayah IKP Terendah</div>
+      <div class="explain-box">
+        Analisis SHAP mengidentifikasi bahwa <strong>NCPR tinggi</strong> adalah pendorong negatif IKP terbesar di hampir semua wilayah rawan pangan, diikuti rendahnya rasio tenaga kesehatan dan tingginya angka kesakitan.
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Wilayah</th><th>IKP</th><th>Faktor Risiko Utama (SHAP)</th><th>Klaster</th></tr></thead>
+          <tbody>
+            <tr><td>Banjarnegara – Wanayasa</td><td><strong style="color:#e74c3c">47.11</strong></td><td>NCPR↑, Kemiskinan↑, Air Bersih↓</td><td><span class="bdg bdg-r">L-FSG</span></td></tr>
+            <tr><td>Wilayah Pegunungan (IKP <55)</td><td><strong style="color:#e74c3c">&lt;55</strong></td><td>NCPR↑, Nakes↓, Kesakitan↑</td><td><span class="bdg bdg-r">L-FSG</span></td></tr>
+            <tr><td>Wilayah Pesisir Terpencil</td><td><strong style="color:#e74c3c">&lt;60</strong></td><td>Stunting↑, Air Bersih↓</td><td><span class="bdg bdg-r">L-FSG</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="explain-box gold" style="margin-top:1rem">
+        🔑 <strong>Temuan Kunci:</strong> NCPR adalah "alarm utama" rawan pangan. Daerah dengan NCPR &gt; 1.5 hampir selalu masuk kategori L-FSG dan perlu intervensi segera.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PREDICTOR ═══════════════ -->
+<section id="predictor">
+  <div class="wrap">
+    <p class="sec-label">🔮 Simulasi Interaktif</p>
+    <h2 class="sec-title">Prediktor IKP Wilayah</h2>
+    <p class="sec-desc">Geser slider untuk mengatur nilai indikator suatu wilayah, lalu lihat prediksi Indeks Ketahanan Pangannya secara real-time.</p>
+
+    <div class="pred-wrap reveal">
+      <div class="pred-form">
+        <div class="pred-title">⚙️ Atur Nilai Indikator Wilayah</div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">NCPR <span style="color:rgba(255,255,255,.4);font-weight:400">(Rasio Kemiskinan Kalori)</span></span><span class="slider-val" id="v-ncpr">0.82</span></div>
+          <input type="range" id="r-ncpr" min="0.03" max="5.0" step="0.01" value="0.82" oninput="update()">
+          <div class="slider-hint">🟢 Rendah = baik · 🔴 Tinggi = buruk · Rata-rata Jateng: 0.82</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Kemiskinan (%)</span><span class="slider-val" id="v-kemis">14.0</span></div>
+          <input type="range" id="r-kemis" min="0.05" max="60.77" step="0.1" value="14.0" oninput="update()">
+          <div class="slider-hint">Rata-rata Jateng: 14.0%</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Pengeluaran Pangan (%)</span><span class="slider-val" id="v-pangan">21.54</span></div>
+          <input type="range" id="r-pangan" min="0.82" max="48.13" step="0.1" value="21.54" oninput="update()">
+          <div class="slider-hint">Rata-rata Jateng: 21.54%</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Tanpa Air Bersih (%)</span><span class="slider-val" id="v-air">19.72</span></div>
+          <input type="range" id="r-air" min="0" max="96.26" step="0.5" value="19.72" oninput="update()">
+          <div class="slider-hint">🟢 Rendah = baik · Rata-rata: 19.72%</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Lama Sekolah Perempuan (thn)</span><span class="slider-val" id="v-sklh">8.10</span></div>
+          <input type="range" id="r-sklh" min="3" max="14" step="0.1" value="8.10" oninput="update()">
+          <div class="slider-hint">🟢 Tinggi = baik · Rata-rata: 8.10 tahun</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Rasio Tenaga Kesehatan</span><span class="slider-val" id="v-nakes">0.87</span></div>
+          <input type="range" id="r-nakes" min="0" max="10.85" step="0.01" value="0.87" oninput="update()">
+          <div class="slider-hint">🟢 Tinggi = baik · Rata-rata: 0.87</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Angka Kesakitan</span><span class="slider-val" id="v-sakit">12.47</span></div>
+          <input type="range" id="r-sakit" min="0.38" max="51.97" step="0.1" value="12.47" oninput="update()">
+          <div class="slider-hint">🔴 Tinggi = buruk · Rata-rata: 12.47</div>
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-top"><span class="slider-name">Stunting (%)</span><span class="slider-val" id="v-stunt">10.98</span></div>
+          <input type="range" id="r-stunt" min="0.6" max="34.65" step="0.5" value="10.98" oninput="update()">
+          <div class="slider-hint">🔴 Tinggi = buruk · Rata-rata: 10.98%</div>
+        </div>
+
+        <button class="pred-btn" onclick="predict()">🔮 Prediksi IKP Sekarang</button>
+      </div>
+
+      <div class="pred-result" id="predResult">
+        <div id="waitMsg" class="waiting">👆 Sesuaikan nilai indikator lalu klik "Prediksi IKP"</div>
+        <div id="resultContent" style="display:none;width:100%">
+          <div class="gauge-wrap">
+            <canvas class="gauge-canvas" id="gaugeChart"></canvas>
+            <div class="gauge-val" id="gVal">—</div>
+          </div>
+          <div id="rCluster"></div>
+          <div class="result-title" id="rTitle"></div>
+          <div class="result-desc" id="rDesc"></div>
+          <div class="result-tips" id="rTips"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ KEBIJAKAN ═══════════════ -->
+<section id="kebijakan" class="sec-alt">
+  <div class="wrap">
+    <p class="sec-label">📋 Rekomendasi</p>
+    <h2 class="sec-title">Implikasi Kebijakan Berbasis Data</h2>
+    <p class="sec-desc">Temuan SHAP dan clustering menghasilkan 4 prioritas kebijakan konkret untuk memperkuat ketahanan pangan Jawa Tengah.</p>
+
+    <div class="g2 reveal">
+      <div class="policy-card">
+        <div class="policy-ico">🌾</div>
+        <div class="policy-title">Intervensi NCPR Prioritas Tinggi</div>
+        <div class="policy-tag">Urgensi: KRITIS</div>
+        <ul class="policy-list">
+          <li>Subsidi pangan kalori di 509 kecamatan L-FSG</li>
+          <li>Program diversifikasi pangan lokal berbasis kearifan daerah</li>
+          <li>Penguatan peran BULOG di wilayah NCPR &gt; 1.5</li>
+          <li>Sistem monitoring ketersediaan kalori real-time</li>
+          <li>Pemetaan desa rawan berbasis IKP prediktif</li>
+        </ul>
+      </div>
+      <div class="policy-card">
+        <div class="policy-ico">🏥</div>
+        <div class="policy-title">Penguatan Layanan Kesehatan</div>
+        <div class="policy-tag">Urgensi: TINGGI</div>
+        <ul class="policy-list">
+          <li>Rekrutmen tenaga kesehatan di kecamatan L-FSG terpencil</li>
+          <li>Program stunting terintegrasi dengan intervensi pangan</li>
+          <li>Mobile health unit untuk daerah sulit dijangkau</li>
+          <li>Penguatan Posyandu dengan data berbasis IKP prediktif</li>
+          <li>Pelatihan kader gizi berbasis machine learning insights</li>
+        </ul>
+      </div>
+      <div class="policy-card">
+        <div class="policy-ico">💧</div>
+        <div class="policy-title">Infrastruktur Dasar & Akses Pangan</div>
+        <div class="policy-tag">Urgensi: SEDANG</div>
+        <ul class="policy-list">
+          <li>Program PAMSIMAS di wilayah tanpa air bersih &gt;50%</li>
+          <li>Sanitasi berbasis komunitas pedesaan</li>
+          <li>Pembangunan akses jalan ke pasar pangan</li>
+          <li>Elektrifikasi desa untuk rantai dingin pangan</li>
+        </ul>
+      </div>
+      <div class="policy-card">
+        <div class="policy-ico">🎓</div>
+        <div class="policy-title">Pemberdayaan Perempuan & Pendidikan</div>
+        <div class="policy-tag">Urgensi: SEDANG</div>
+        <ul class="policy-list">
+          <li>Program kesetaraan lama sekolah perempuan</li>
+          <li>Korelasi positif terkuat: pendidikan perempuan → IKP</li>
+          <li>Pelatihan gizi & ketahanan pangan rumah tangga</li>
+          <li>Pemberdayaan ekonomi perempuan desa melalui UMKM</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:1.5rem">
+      <div class="card-h"><div class="ico">🎯</div>Radar Prioritas Kebijakan</div>
+      <canvas id="radarChart" height="320"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<section id="faq">
+  <div class="wrap">
+    <p class="sec-label">❓ Panduan & FAQ</p>
+    <h2 class="sec-title">Pertanyaan yang Sering Diajukan</h2>
+    <p class="sec-desc">Penjelasan untuk masyarakat umum tentang apa itu IKP, machine learning, dan bagaimana analisis ini berguna.</p>
+
+    <div class="g2 reveal">
+      <div class="card" style="padding:1.5rem">
+        <div class="faq-item">
+          <div class="faq-q">Apa itu IKP (Indeks Ketahanan Pangan)? <span class="arrow">▼</span></div>
+          <div class="faq-a">IKP adalah angka dari 0–100 yang mengukur seberapa aman kondisi pangan suatu wilayah. Semakin tinggi angkanya, semakin baik. IKP 90+ berarti sangat aman, sedangkan IKP di bawah 60 berarti wilayah tersebut mengalami kerawanan pangan serius.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Apa itu NCPR dan mengapa penting? <span class="arrow">▼</span></div>
+          <div class="faq-a">NCPR (Normalized Caloric Poverty Ratio) mengukur proporsi penduduk yang tidak mendapatkan cukup kalori. Angka NCPR &gt; 1.0 berarti mayoritas penduduk kekurangan kalori. Dalam analisis ini, NCPR adalah variabel PALING BERPENGARUH terhadap IKP — jauh lebih penting dari faktor lainnya.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Apa itu Machine Learning dalam konteks ini? <span class="arrow">▼</span></div>
+          <div class="faq-a">Machine Learning adalah cara "mengajarkan" komputer untuk membuat prediksi berdasarkan contoh-contoh nyata. Di sini, kita memberi komputer data 576 kecamatan beserta IKP-nya, lalu komputer "belajar" pola tersebut untuk memprediksi IKP kecamatan baru yang belum diketahui.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Seberapa akurat prediksi ini? <span class="arrow">▼</span></div>
+          <div class="faq-a">Model XGBoost terbaik memiliki R² = 0.9179, artinya model berhasil menjelaskan 91.8% variasi IKP. Error rata-rata hanya ±1.13 poin — dalam skala 0–100, ini sangat kecil dan dapat diandalkan untuk pengambilan kebijakan.</div>
+        </div>
+      </div>
+      <div class="card" style="padding:1.5rem">
+        <div class="faq-item">
+          <div class="faq-q">Apa perbedaan H-FSG dan L-FSG? <span class="arrow">▼</span></div>
+          <div class="faq-a">H-FSG (High Food Security Group) adalah kelompok kecamatan dengan ketahanan pangan tinggi — hanya 67 kecamatan (11.6%). L-FSG (Low Food Security Group) adalah kelompok yang rentan — mencakup 509 kecamatan atau 88.4% dari seluruh Jawa Tengah. Ini menunjukkan betapa luasnya tantangan ketahanan pangan.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Bagaimana cara menggunakan prediktor? <span class="arrow">▼</span></div>
+          <div class="faq-a">Geser slider sesuai data wilayah yang ingin diprediksi. Jika data tidak tersedia, biarkan di nilai rata-rata (default). Klik "Prediksi IKP" dan sistem akan menampilkan estimasi IKP beserta rekomendasi intervensinya.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Apakah hasil prediktor ini resmi? <span class="arrow">▼</span></div>
+          <div class="faq-a">Prediktor ini adalah simulasi berbasis model statistik, bukan angka resmi pemerintah. Gunakan sebagai referensi awal atau alat edukasi. Untuk data resmi IKP, silakan merujuk ke BKP (Badan Ketahanan Pangan) atau BPS Jawa Tengah.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Data dari mana dan tahun berapa? <span class="arrow">▼</span></div>
+          <div class="faq-a">Dataset menggunakan Data IKP Jawa Tengah dari FSVA (Food Security and Vulnerability Atlas) yang mencakup 576 kecamatan. Analisis dilakukan sebagai bagian dari penelitian akademik di Program Studi Statistika FMIPA Universitas Jenderal Soedirman.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+
+<section id="tabel" class="sec-light">
+  <div class="wrap">
+    <p class="sec-label">📋 Data Kecamatan</p>
+    <h2 class="sec-title">Tabel Lengkap 572 Kecamatan</h2>
+    <p class="sec-desc">Cari dan filter semua kecamatan di Jawa Tengah beserta hasil clustering dan estimasi nilai IKP.</p>
+    
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;align-items:center">
+      <input id="kecSearch" type="text" placeholder="🔍 Cari kecamatan atau kabupaten..." 
+        style="flex:1;min-width:220px;padding:12px 16px;border:2px solid #e0e0e0;border-radius:12px;font-size:.9rem;font-family:inherit;outline:none;transition:.2s"
+        oninput="filterTable()"
+      />
+      <select id="clusterFilter" onchange="filterTable()"
+        style="padding:12px 16px;border:2px solid #e0e0e0;border-radius:12px;font-size:.9rem;font-family:inherit;outline:none;background:#fff">
+        <option value="">Semua Klaster</option>
+        <option value="H-FSG">✅ H-FSG (Aman Pangan)</option>
+        <option value="L-FSG">⚠️ L-FSG (Rawan Pangan)</option>
+      </select>
+      <div id="kecCount" style="font-size:.85rem;color:#666;white-space:nowrap">Menampilkan 572 kecamatan</div>
+    </div>
+
+    <div style="overflow-x:auto;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);">
+      <table id="kecTable" style="width:100%;border-collapse:collapse;font-size:.87rem">
+        <thead>
+          <tr style="background:linear-gradient(135deg,#0a2e1a,#1a5c35);color:#fff">
+            <th style="padding:14px 16px;text-align:left;font-weight:700;border-radius:16px 0 0 0">No</th>
+            <th style="padding:14px 16px;text-align:left;font-weight:700">Kecamatan</th>
+            <th style="padding:14px 16px;text-align:left;font-weight:700">Kabupaten/Kota</th>
+            <th style="padding:14px 16px;text-align:center;font-weight:700">Klaster</th>
+            <th style="padding:14px 16px;text-align:center;font-weight:700;border-radius:0 16px 0 0">Est. IKP</th>
+          </tr>
+        </thead>
+        <tbody id="kecTbody">
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.75rem;color:#999;margin-top:12px;text-align:center">*Hasil clustering Agglomerative Hierarchical Clustering Ward Linkage dari model machine learning notebook. Est. IKP = estimasi berbasis profil klaster.</p>
+  </div>
+</section>
+
+<script>
+// Build table from kecData
+const tbody = document.getElementById('kecTbody')
+let visibleData = [...kecData]
+
+function renderTable(data) {
+  tbody.innerHTML = data.slice(0,200).map((d,i) => {
+    const isH = d.cluster === 'H-FSG'
+    const badge = isH
+      ? `<span style="background:#d4edda;color:#145a28;border-radius:99px;padding:.2rem .7rem;font-size:.75rem;font-weight:700">✅ H-FSG</span>`
+      : `<span style="background:#fde8e8;color:#8b1515;border-radius:99px;padding:.2rem .7rem;font-size:.75rem;font-weight:700">⚠️ L-FSG</span>`
+    const row_bg = i%2===0 ? '#fff' : '#f8faf8'
+    return `<tr style="background:${row_bg};transition:.15s" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='${row_bg}'">
+      <td style="padding:10px 16px;color:#999">${i+1}</td>
+      <td style="padding:10px 16px;font-weight:600;text-transform:capitalize;color:#0a2e1a">${d.kecamatan}</td>
+      <td style="padding:10px 16px;color:#444">${d.kabupaten}</td>
+      <td style="padding:10px 16px;text-align:center">${badge}</td>
+      <td style="padding:10px 16px;text-align:center;font-weight:700;color:${isH?'#27ae60':'#e74c3c'}">${d.ikp.toFixed(1)}</td>
+    </tr>`
+  }).join('')
+  
+  const countEl = document.getElementById('kecCount')
+  if(data.length > 200) {
+    countEl.textContent = `Menampilkan 200 dari ${data.length} kecamatan`
+  } else {
+    countEl.textContent = `Menampilkan ${data.length} kecamatan`
+  }
+}
+
+function filterTable() {
+  const q = document.getElementById('kecSearch').value.toLowerCase()
+  const cl = document.getElementById('clusterFilter').value
+  visibleData = kecData.filter(d => {
+    const matchQ = !q || d.kecamatan.includes(q) || d.kabupaten.toLowerCase().includes(q) || d.wilayah.includes(q)
+    const matchCl = !cl || d.cluster === cl
+    return matchQ && matchCl
+  })
+  renderTable(visibleData)
+}
+
+// Initial render
+document.addEventListener('DOMContentLoaded', () => renderTable(kecData))
+// Also try immediate render for already-loaded page
+if(document.readyState !== 'loading') renderTable(kecData)
+</script>
+<footer>
+  <div class="footer-logo"><span>SEMBADA</span> JATENG</div>
+  <div class="footer-desc">Platform deteksi dini wilayah rawan pangan berbasis Machine Learning untuk 576 kecamatan Jawa Tengah. Dibangun untuk mendukung kebijakan pangan nasional yang lebih tepat sasaran.</div>
+  <div class="footer-tags">
+    <span class="footer-tag">Agglomerative Clustering</span>
+    <span class="footer-tag">XGBoost</span>
+    <span class="footer-tag">SHAP</span>
+    <span class="footer-tag">PCA</span>
+    <span class="footer-tag">576 Kecamatan</span>
+    <span class="footer-tag">FSVA Dataset</span>
+    <span class="footer-tag">Statistika UNSOED</span>
+  </div>
+  <div class="footer-copy">© 2024 · Analisis Pipeline IKP Jawa Tengah · <a href="#home">Kembali ke Atas ↑</a></div>
+</footer>
+
+<script>
+// ═══════ LOADER ═══════
+window.addEventListener('load',()=>{
+  setTimeout(()=>document.getElementById('loader').classList.add('done'),2000)
+})
+
+// ═══════ COUNTER ANIMATION ═══════
+function animateCounter(el){
+  const target=parseInt(el.dataset.target)
+  const isPct=el.dataset.pct
+  const val=isPct?parseFloat(el.dataset.pct):target
+  let cur=0;const dur=1800;const step=16
+  const inc=val/(dur/step)
+  const t=setInterval(()=>{
+    cur=Math.min(cur+inc,val)
+    el.textContent=isPct?cur.toFixed(1)+'%':Math.floor(cur).toLocaleString()
+    if(cur>=val)clearInterval(t)
+  },step)
+}
+
+// ═══════ SCROLL REVEAL ═══════
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('visible')
+      // counter
+      e.target.querySelectorAll('[data-target],[data-pct]').forEach(animateCounter)
+      // chart bars
+      e.target.querySelectorAll('.metric-fill[data-w]').forEach(b=>{
+        setTimeout(()=>b.style.width=b.dataset.w+'%',200)
+      })
+    }
+  })
+},{threshold:0.12})
+document.querySelectorAll('.reveal,.reveal-l,.reveal-r').forEach(el=>io.observe(el))
+
+// Hero counter
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.querySelectorAll('.hstat .n').forEach(el=>animateCounter(el))
+  },2100)
+})
+
+// Metric bars — also on section reveal
+document.querySelectorAll('.metric-fill[data-w]').forEach(b=>{
+  const sectionObs=new IntersectionObserver((ent)=>{
+    if(ent[0].isIntersecting){setTimeout(()=>b.style.width=b.dataset.w+'%',400);sectionObs.disconnect()}
+  },{threshold:.2})
+  sectionObs.observe(b)
+})
+
+// ═══════ NAV ACTIVE ═══════
+const navLinks=document.querySelectorAll('.nav-links a:not(.nav-cta)')
+window.addEventListener('scroll',()=>{
+  const sections=document.querySelectorAll('section[id]')
+  let cur=''
+  sections.forEach(s=>{
+    if(window.scrollY>=s.offsetTop-120)cur=s.id
+  })
+  navLinks.forEach(a=>{
+    a.classList.toggle('active',a.getAttribute('href')==='#'+cur)
+  })
+})
+
+// ═══════ FAQ ═══════
+document.querySelectorAll('.faq-item').forEach(item=>{
+  item.querySelector('.faq-q').addEventListener('click',()=>{
+    const open=item.classList.contains('open')
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'))
+    if(!open)item.classList.add('open')
+  })
+})
+
+// ═══════ CHARTS ═══════
+const C={green:'#27ae60',gold:'#f4c430',red:'#e74c3c',blue:'#3498db',dark:'#0a2e1a',pale:'#e8f5ee'}
+
+// 1. Correlation
+new Chart(document.getElementById('corrChart'),{
+  type:'bar',
+  data:{
+    labels:['Lama Sklh ♀','Rasio Nakes','NCPR','Peng.Pangan','Tanpa Air','Stunting','Kesakitan','Kemiskinan'],
+    datasets:[{
+      label:'Korelasi dengan IKP',
+      data:[0.52,0.35,-0.45,-0.41,-0.31,-0.33,-0.28,-0.38],
+      backgroundColor:d=>d.raw>=0?C.green+'cc':C.red+'cc',
+      borderRadius:6,borderSkipped:false
+    }]
+  },
+  options:{
+    indexAxis:'y',responsive:true,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Korelasi: ${ctx.raw > 0?'+':''}${ctx.raw}`}}},
+    scales:{x:{min:-0.7,max:0.7,grid:{color:'#f0f0f0'},ticks:{callback:v=>(v>0?'+':'')+v}},y:{ticks:{font:{size:11}}}}
+  }
+})
+
+// 2. Distribution
+const distLabels=['47–52','52–57','57–62','62–67','67–72','72–77','77–82','82–87','87–92','92–97']
+const distData=[1,2,5,10,22,55,120,195,140,26]
+new Chart(document.getElementById('distChart'),{
+  type:'bar',
+  data:{
+    labels:distLabels,
+    datasets:[{
+      label:'Jumlah Kecamatan',
+      data:distData,
+      backgroundColor:ctx=>{
+        const v=distData[ctx.dataIndex]
+        if(v>=100)return C.green+'cc'
+        if(v>=40)return C.gold+'cc'
+        return C.red+'cc'
+      },
+      borderRadius:6,borderSkipped:false
+    }]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw} kecamatan`}}},
+    scales:{x:{ticks:{font:{size:10}}},y:{grid:{color:'#f0f0f0'},title:{display:true,text:'Jumlah Kecamatan'}}}
+  }
+})
+
+// 3. PCA Bar
+new Chart(document.getElementById('pcaBar'),{
+  type:'bar',
+  data:{
+    labels:['PC1 — Pendidikan & Pangan','PC2 — NCPR & Air','PC3+ — Sisanya'],
+    datasets:[{label:'Variansi Tertangkap (%)',data:[31.0,16.6,51.4],
+      backgroundColor:[C.gold+'dd',C.green+'dd','#ccc'],borderRadius:8}]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{display:false}},
+    scales:{y:{max:60,ticks:{callback:v=>v+'%'},grid:{color:'#f0f0f0'}}}
+  }
+})
+
+// 4. Cluster metric
+new Chart(document.getElementById('clusterMetric'),{
+  type:'bar',
+  data:{
+    labels:['K-Means k=2','Agglomerative k=2','K-Means k=3','Agglo k=3'],
+    datasets:[
+      {label:'Silhouette ↑ (lebih besar = lebih baik)',data:[0.1754,0.1890,0.1472,0.1890],backgroundColor:C.green+'aa',borderRadius:4},
+      {label:'Davies-Bouldin ↓ (lebih kecil = lebih baik)',data:[1.8251,1.2188,2.0037,1.2188],backgroundColor:C.red+'aa',borderRadius:4}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},scales:{y:{grid:{color:'#f0f0f0'}}}}
+})
+
+// 5. Cluster Pie
+new Chart(document.getElementById('clusterPie'),{
+  type:'doughnut',
+  data:{
+    labels:['L-FSG — Rawan Pangan (509)','H-FSG — Aman (67)'],
+    datasets:[{data:[509,67],backgroundColor:[C.red,C.green],borderWidth:4,borderColor:'#fff',hoverOffset:8}]
+  },
+  options:{
+    responsive:true,cutout:'62%',
+    plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${(ctx.parsed/576*100).toFixed(1)}%`}}}
+  }
+})
+
+// 6. Model comparison
+new Chart(document.getElementById('modelChart'),{
+  type:'bar',
+  data:{
+    labels:['Linear Regression','Random Forest','XGBoost ⭐'],
+    datasets:[
+      {label:'R² ↑',data:[0.8404,0.9083,0.9179],backgroundColor:[C.blue+'aa',C.green+'aa',C.gold+'dd'],borderRadius:6},
+      {label:'MAE ↓',data:[1.5144,1.3149,1.1331],backgroundColor:[C.blue+'44',C.green+'44',C.gold+'55'],borderRadius:6,yAxisID:'y2'},
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{position:'top'}},
+    scales:{
+      y:{position:'left',title:{display:true,text:'R²'},grid:{color:'#f0f0f0'}},
+      y2:{position:'right',title:{display:true,text:'MAE'},grid:{display:false}}
+    }
+  }
+})
+
+// 7. Feature importance list
+const fiData=[
+  {n:'NCPR',v:1.1444,d:'Rasio kemiskinan kalori — faktor paling kritis. Daerah dengan NCPR tinggi selalu rawan pangan.'},
+  {n:'Rasio Tenaga Kesehatan',v:0.1708,d:'Ketersediaan dokter/bidan per penduduk sangat mempengaruhi kondisi gizi.'},
+  {n:'Angka Kesakitan',v:0.1345,d:'Tingkat penyakit berkorelasi dengan penurunan penyerapan nutrisi.'},
+  {n:'Tanpa Air Bersih (%)',v:0.1213,d:'Akses air bersih mempengaruhi sanitasi dan keamanan pangan.'},
+  {n:'Kemiskinan (%)',v:0.0786,d:'Kemiskinan membatasi akses rumah tangga terhadap pangan bergizi.'},
+  {n:'Stunting (%)',v:0.0489,d:'Indikator kurang gizi kronis pada anak sebagai dampak jangka panjang.'},
+  {n:'Pengeluaran Pangan (%)',v:0.0211,d:'Proporsi pendapatan untuk pangan mencerminkan kemampuan daya beli.'},
+  {n:'Lama Sekolah Perempuan',v:0.0165,d:'Pendidikan perempuan berkorelasi positif dengan kualitas gizi keluarga.'},
+]
+const maxFI=1.1444
+const rankCls=['r1','r2','r3','rn','rn','rn','rn','rn']
+const fiList=document.getElementById('fiList')
+fiData.forEach((f,i)=>{
+  fiList.innerHTML+=`
+  <div class="fi-item">
+    <div class="fi-top">
+      <div class="fi-rank ${rankCls[i]}">${i+1}</div>
+      <div class="fi-name">${f.n}</div>
+      <div class="fi-val">${f.v.toFixed(4)}</div>
+    </div>
+    <div class="fi-bar-wrap"><div class="fi-bar" style="width:0;background:${i===0?'linear-gradient(90deg,'+C.gold+','+C.red+')':'linear-gradient(90deg,'+C.dark+','+C.green+')'};" data-fw="${(f.v/maxFI*100).toFixed(1)}"></div></div>
+    <div class="fi-desc">${f.d}</div>
+  </div>`
+})
+// Animate FI bars on scroll
+const fiObs=new IntersectionObserver(ent=>{
+  if(ent[0].isIntersecting){
+    document.querySelectorAll('.fi-bar[data-fw]').forEach((b,i)=>{
+      setTimeout(()=>b.style.width=b.dataset.fw+'%',i*100)
+    })
+    fiObs.disconnect()
+  }
+},{threshold:.2})
+fiObs.observe(document.getElementById('fiList'))
+
+// 8. FI grouped chart
+new Chart(document.getElementById('fiChart'),{
+  type:'bar',
+  data:{
+    labels:fiData.map(f=>f.n.length>18?f.n.substring(0,16)+'..':f.n),
+    datasets:[
+      {label:'XGBoost',data:[0.38,0.12,0.09,0.11,0.08,0.07,0.06,0.09],backgroundColor:C.gold+'cc',borderRadius:4},
+      {label:'Random Forest',data:[0.32,0.14,0.10,0.13,0.09,0.06,0.07,0.09],backgroundColor:C.green+'aa',borderRadius:4},
+      {label:'Linear Reg.',data:[0.28,0.18,0.08,0.10,0.12,0.05,0.09,0.10],backgroundColor:C.blue+'aa',borderRadius:4},
+    ]
+  },
+  options:{
+    indexAxis:'y',responsive:true,
+    plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},
+    scales:{x:{grid:{color:'#f0f0f0'}},y:{ticks:{font:{size:10}}}}
+  }
+})
+
+// 9. Radar policy
+new Chart(document.getElementById('radarChart'),{
+  type:'radar',
+  data:{
+    labels:['Intervensi NCPR','Layanan Kesehatan','Akses Air Bersih','Pendidikan Perempuan','Kurangi Kemiskinan','Tangani Stunting'],
+    datasets:[
+      {label:'Bobot Prioritas Kebijakan',data:[95,72,58,45,38,30],backgroundColor:C.gold+'33',borderColor:C.gold,borderWidth:2.5,pointBackgroundColor:C.gold,pointRadius:5},
+      {label:'Prevalensi Masalah di L-FSG',data:[88,65,52,40,42,35],backgroundColor:C.red+'20',borderColor:C.red,borderWidth:2,pointBackgroundColor:C.red,pointRadius:4}
+    ]
+  },
+  options:{
+    responsive:true,
+    scales:{r:{min:0,max:100,ticks:{stepSize:25,font:{size:10}},grid:{color:'#e8f5ee'},pointLabels:{font:{size:11,weight:'600'}}}},
+    plugins:{legend:{position:'top'}}
+  }
+})
+
+// ═══════ GAUGE CHART ═══════
+let gaugeChart=null
+function drawGauge(val){
+  const ctx=document.getElementById('gaugeChart').getContext('2d')
+  if(gaugeChart)gaugeChart.destroy()
+  const pct=Math.max(0,Math.min(100,val))
+  const color=pct>=80?C.green:pct>=65?C.gold:C.red
+  gaugeChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      datasets:[{
+        data:[pct,100-pct],
+        backgroundColor:[color,'#e8f5ee22'],
+        borderWidth:0,
+        circumference:180,
+        rotation:270
+      }]
+    },
+    options:{
+      responsive:false,cutout:'72%',
+      plugins:{legend:{display:false},tooltip:{enabled:false}}
+    }
+  })
+}
+
+// ═══════ PREDICTOR ═══════
+function update(){
+  const ids=['ncpr','kemis','pangan','air','sklh','nakes','sakit','stunt']
+  const keys=['ncpr','kemis','pangan','air','sklh','nakes','sakit','stunt']
+  ids.forEach((id,i)=>{
+    const v=parseFloat(document.getElementById('r-'+id).value)
+    document.getElementById('v-'+id).textContent=v.toFixed(id==='sklh'?1:2)
+  })
+}
+
+function predict(){
+  const ncpr=parseFloat(document.getElementById('r-ncpr').value)
+  const kemis=parseFloat(document.getElementById('r-kemis').value)
+  const pangan=parseFloat(document.getElementById('r-pangan').value)
+  const air=parseFloat(document.getElementById('r-air').value)
+  const sklh=parseFloat(document.getElementById('r-sklh').value)
+  const nakes=parseFloat(document.getElementById('r-nakes').value)
+  const sakit=parseFloat(document.getElementById('r-sakit').value)
+  const stunt=parseFloat(document.getElementById('r-stunt').value)
+
+  // Calibrated approximation
+  let ikp = 90
+    - ncpr  * 7.8
+    - kemis * 0.20
+    - pangan* 0.10
+    - air   * 0.055
+    + sklh  * 0.85
+    + nakes * 0.75
+    - sakit * 0.14
+    - stunt * 0.05
+  ikp=Math.max(30,Math.min(100,ikp))
+
+  document.getElementById('waitMsg').style.display='none'
+  document.getElementById('resultContent').style.display='block'
+  document.getElementById('gVal').textContent=ikp.toFixed(1)
+  drawGauge(ikp)
+
+  let cluster,clsClass,title,desc,tips
+  if(ikp>=80){
+    cluster='✅ H-FSG — Ketahanan Pangan TINGGI'
+    clsClass='rc-h'
+    title='Wilayah ini relatif aman dari rawan pangan'
+    desc='Kondisi ketahanan pangan di wilayah ini cukup baik. Pertahankan program yang sudah berjalan dan jadikan model untuk wilayah sekitarnya.'
+    tips=`<div class="tip-item"><div class="dot dot-g"></div>Pertahankan akses layanan kesehatan dan air bersih</div>
+    <div class="tip-item"><div class="dot dot-g"></div>Tingkatkan program pendidikan perempuan untuk hasil lebih baik</div>
+    <div class="tip-item"><div class="dot dot-g"></div>Jadikan wilayah ini percontohan untuk daerah L-FSG sekitarnya</div>`
+  } else if(ikp>=65){
+    cluster='🟡 Transisi — Ketahanan Pangan SEDANG'
+    clsClass='rc-m'
+    title='Wilayah ini berada di zona waspada'
+    desc='Kondisi pangan belum mengkhawatirkan, namun perlu perhatian. Intervensi dini dapat mencegah wilayah ini masuk L-FSG.'
+    tips=`<div class="tip-item"><div class="dot dot-y"></div>Pantau NCPR secara berkala — jika naik di atas 1.0, segera intervensi</div>
+    <div class="tip-item"><div class="dot dot-y"></div>Perkuat program gizi masyarakat dan posyandu</div>
+    <div class="tip-item"><div class="dot dot-y"></div>Tingkatkan akses air bersih dan sanitasi</div>`
+  } else {
+    cluster='🔴 L-FSG — RAWAN PANGAN'
+    clsClass='rc-l'
+    title='Wilayah ini memerlukan intervensi SEGERA'
+    desc='Kondisi ketahanan pangan di wilayah ini sangat mengkhawatirkan. Diperlukan intervensi multi-sektor dalam waktu cepat.'
+    tips=`<div class="tip-item"><div class="dot dot-r"></div>Salurkan bantuan pangan darurat (NCPR sangat tinggi)</div>
+    <div class="tip-item"><div class="dot dot-r"></div>Kirim tenaga kesehatan/bidan ke wilayah ini segera</div>
+    <div class="tip-item"><div class="dot dot-r"></div>Identifikasi keluarga berisiko stunting dan berikan PMT</div>
+    <div class="tip-item"><div class="dot dot-r"></div>Koordinasikan dengan BPBD/Dinas Pangan setempat</div>`
+  }
+
+  document.getElementById('rCluster').innerHTML=`<div class="result-cluster ${clsClass}">${cluster}</div>`
+  document.getElementById('rTitle').textContent=title
+  document.getElementById('rDesc').textContent=desc
+  document.getElementById('rTips').innerHTML=`<div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.5rem;font-weight:700">REKOMENDASI TINDAKAN:</div>${tips}`
+}
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.js">
+// ======= LEAFLET MAP =======
+const kecData = [{"wilayah": "cilacap - kedungreja", "kabupaten": "Cilacap", "kecamatan": "kedungreja", "cluster": "L-FSG", "ikp": 85.6, "lat": -7.8059, "lng": 108.7709}, {"wilayah": "cilacap - kesugihan", "kabupaten": "Cilacap", "kecamatan": "kesugihan", "cluster": "L-FSG", "ikp": 85.4, "lat": -7.7151, "lng": 108.7946}, {"wilayah": "cilacap - adipala", "kabupaten": "Cilacap", "kecamatan": "adipala", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.6894, "lng": 108.7787}, {"wilayah": "cilacap - binangun", "kabupaten": "Cilacap", "kecamatan": "binangun", "cluster": "L-FSG", "ikp": 85.9, "lat": -7.7352, "lng": 108.6905}, {"wilayah": "cilacap - nusawungu", "kabupaten": "Cilacap", "kecamatan": "nusawungu", "cluster": "L-FSG", "ikp": 85.3, "lat": -7.8186, "lng": 108.6756}, {"wilayah": "cilacap - sidareja", "kabupaten": "Cilacap", "kecamatan": "sidareja", "cluster": "L-FSG", "ikp": 84.2, "lat": -7.7763, "lng": 108.7897}, {"wilayah": "cilacap - gandrungmangu", "kabupaten": "Cilacap", "kecamatan": "gandrungmangu", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.7519, "lng": 108.7789}, {"wilayah": "cilacap - bantarsari", "kabupaten": "Cilacap", "kecamatan": "bantarsari", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.8341, "lng": 108.9153}, {"wilayah": "cilacap - kawunganten", "kabupaten": "Cilacap", "kecamatan": "kawunganten", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.6301, "lng": 108.6913}, {"wilayah": "cilacap - jeruklegi", "kabupaten": "Cilacap", "kecamatan": "jeruklegi", "cluster": "L-FSG", "ikp": 83.0, "lat": -7.7624, "lng": 108.8632}, {"wilayah": "cilacap - majenang", "kabupaten": "Cilacap", "kecamatan": "majenang", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.834, "lng": 108.9569}, {"wilayah": "cilacap - wanareja", "kabupaten": "Cilacap", "kecamatan": "wanareja", "cluster": "L-FSG", "ikp": 78.2, "lat": -7.8062, "lng": 108.7622}, {"wilayah": "cilacap - dayeuhluhur", "kabupaten": "Cilacap", "kecamatan": "dayeuhluhur", "cluster": "L-FSG", "ikp": 76.4, "lat": -7.779, "lng": 108.9128}, {"wilayah": "cilacap - cimanggu", "kabupaten": "Cilacap", "kecamatan": "cimanggu", "cluster": "L-FSG", "ikp": 75.8, "lat": -7.7996, "lng": 108.8721}, {"wilayah": "cilacap - karangpucung", "kabupaten": "Cilacap", "kecamatan": "karangpucung", "cluster": "L-FSG", "ikp": 77.3, "lat": -7.6651, "lng": 108.8887}, {"wilayah": "cilacap - cipari", "kabupaten": "Cilacap", "kecamatan": "cipari", "cluster": "L-FSG", "ikp": 76.9, "lat": -7.8255, "lng": 108.9083}, {"wilayah": "cilacap - kroya", "kabupaten": "Cilacap", "kecamatan": "kroya", "cluster": "L-FSG", "ikp": 84.7, "lat": -7.6963, "lng": 108.8731}, {"wilayah": "cilacap - sampang", "kabupaten": "Cilacap", "kecamatan": "sampang", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.6442, "lng": 108.9149}, {"wilayah": "cilacap - maos", "kabupaten": "Cilacap", "kecamatan": "maos", "cluster": "L-FSG", "ikp": 83.4, "lat": -7.7546, "lng": 108.9415}, {"wilayah": "cilacap - cilacap tengah", "kabupaten": "Cilacap", "kecamatan": "cilacap tengah", "cluster": "H-FSG", "ikp": 89.2, "lat": -7.8396, "lng": 108.8581}, {"wilayah": "cilacap - cilacap selatan", "kabupaten": "Cilacap", "kecamatan": "cilacap selatan", "cluster": "H-FSG", "ikp": 88.7, "lat": -7.7362, "lng": 108.7757}, {"wilayah": "cilacap - cilacap utara", "kabupaten": "Cilacap", "kecamatan": "cilacap utara", "cluster": "H-FSG", "ikp": 87.9, "lat": -7.7071, "lng": 108.7258}, {"wilayah": "cilacap - kampung laut", "kabupaten": "Cilacap", "kecamatan": "kampung laut", "cluster": "L-FSG", "ikp": 72.3, "lat": -7.7866, "lng": 108.8625}, {"wilayah": "cilacap - patimuan", "kabupaten": "Cilacap", "kecamatan": "patimuan", "cluster": "L-FSG", "ikp": 80.1, "lat": -7.6784, "lng": 108.7228}, {"wilayah": "banyumas - lumbir", "kabupaten": "Banyumas", "kecamatan": "lumbir", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.4502, "lng": 109.2674}, {"wilayah": "banyumas - wangon", "kabupaten": "Banyumas", "kecamatan": "wangon", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.4142, "lng": 109.3472}, {"wilayah": "banyumas - jatilawang", "kabupaten": "Banyumas", "kecamatan": "jatilawang", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.4891, "lng": 109.3351}, {"wilayah": "banyumas - rawalo", "kabupaten": "Banyumas", "kecamatan": "rawalo", "cluster": "L-FSG", "ikp": 82.8, "lat": -7.611, "lng": 109.4199}, {"wilayah": "banyumas - kebasen", "kabupaten": "Banyumas", "kecamatan": "kebasen", "cluster": "L-FSG", "ikp": 83.1, "lat": -7.4217, "lng": 109.1748}, {"wilayah": "banyumas - kemranjen", "kabupaten": "Banyumas", "kecamatan": "kemranjen", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.6083, "lng": 109.2504}, {"wilayah": "banyumas - sumpiuh", "kabupaten": "Banyumas", "kecamatan": "sumpiuh", "cluster": "L-FSG", "ikp": 83.7, "lat": -7.4606, "lng": 109.2303}, {"wilayah": "banyumas - tambak", "kabupaten": "Banyumas", "kecamatan": "tambak", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.5766, "lng": 109.3671}, {"wilayah": "banyumas - somagede", "kabupaten": "Banyumas", "kecamatan": "somagede", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.5965, "lng": 109.168}, {"wilayah": "banyumas - kalibagor", "kabupaten": "Banyumas", "kecamatan": "kalibagor", "cluster": "L-FSG", "ikp": 83.9, "lat": -7.4759, "lng": 109.3521}, {"wilayah": "banyumas - banyumas", "kabupaten": "Banyumas", "kecamatan": "banyumas", "cluster": "L-FSG", "ikp": 84.6, "lat": -7.5976, "lng": 109.1443}, {"wilayah": "banyumas - patikraja", "kabupaten": "Banyumas", "kecamatan": "patikraja", "cluster": "L-FSG", "ikp": 83.3, "lat": -7.6084, "lng": 109.3556}, {"wilayah": "banyumas - purwojati", "kabupaten": "Banyumas", "kecamatan": "purwojati", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.5581, "lng": 109.2604}, {"wilayah": "banyumas - ajibarang", "kabupaten": "Banyumas", "kecamatan": "ajibarang", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.4845, "lng": 109.3185}, {"wilayah": "banyumas - gumelar", "kabupaten": "Banyumas", "kecamatan": "gumelar", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.5696, "lng": 109.2319}, {"wilayah": "banyumas - pekuncen", "kabupaten": "Banyumas", "kecamatan": "pekuncen", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.4492, "lng": 109.3695}, {"wilayah": "banyumas - cilongok", "kabupaten": "Banyumas", "kecamatan": "cilongok", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.5815, "lng": 109.3585}, {"wilayah": "banyumas - karanglewas", "kabupaten": "Banyumas", "kecamatan": "karanglewas", "cluster": "L-FSG", "ikp": 84.1, "lat": -7.6442, "lng": 109.1411}, {"wilayah": "banyumas - kedungbanteng", "kabupaten": "Banyumas", "kecamatan": "kedungbanteng", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.5236, "lng": 109.3465}, {"wilayah": "banyumas - baturraden", "kabupaten": "Banyumas", "kecamatan": "baturraden", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.5274, "lng": 109.4107}, {"wilayah": "banyumas - sumbang", "kabupaten": "Banyumas", "kecamatan": "sumbang", "cluster": "L-FSG", "ikp": 84.3, "lat": -7.4663, "lng": 109.2719}, {"wilayah": "banyumas - kembaran", "kabupaten": "Banyumas", "kecamatan": "kembaran", "cluster": "L-FSG", "ikp": 84.6, "lat": -7.5865, "lng": 109.2201}, {"wilayah": "banyumas - sokaraja", "kabupaten": "Banyumas", "kecamatan": "sokaraja", "cluster": "L-FSG", "ikp": 85.1, "lat": -7.6251, "lng": 109.3663}, {"wilayah": "banyumas - purwokerto selatan", "kabupaten": "Banyumas", "kecamatan": "purwokerto selatan", "cluster": "H-FSG", "ikp": 89.5, "lat": -7.567, "lng": 109.1788}, {"wilayah": "banyumas - purwokerto barat", "kabupaten": "Banyumas", "kecamatan": "purwokerto barat", "cluster": "H-FSG", "ikp": 88.9, "lat": -7.6333, "lng": 109.3444}, {"wilayah": "banyumas - purwokerto timur", "kabupaten": "Banyumas", "kecamatan": "purwokerto timur", "cluster": "H-FSG", "ikp": 90.1, "lat": -7.5224, "lng": 109.3157}, {"wilayah": "banyumas - purwokerto utara", "kabupaten": "Banyumas", "kecamatan": "purwokerto utara", "cluster": "H-FSG", "ikp": 89.7, "lat": -7.5661, "lng": 109.2227}, {"wilayah": "purbalingga - kemangkon", "kabupaten": "Purbalingga", "kecamatan": "kemangkon", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.443, "lng": 109.3599}, {"wilayah": "purbalingga - bukateja", "kabupaten": "Purbalingga", "kecamatan": "bukateja", "cluster": "L-FSG", "ikp": 83.1, "lat": -7.4439, "lng": 109.3859}, {"wilayah": "purbalingga - kejobong", "kabupaten": "Purbalingga", "kecamatan": "kejobong", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.5094, "lng": 109.333}, {"wilayah": "purbalingga - kaligondang", "kabupaten": "Purbalingga", "kecamatan": "kaligondang", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.4991, "lng": 109.4257}, {"wilayah": "purbalingga - purbalingga", "kabupaten": "Purbalingga", "kecamatan": "purbalingga", "cluster": "L-FSG", "ikp": 84.7, "lat": -7.498, "lng": 109.3557}, {"wilayah": "purbalingga - kalimanah", "kabupaten": "Purbalingga", "kecamatan": "kalimanah", "cluster": "L-FSG", "ikp": 83.9, "lat": -7.3241, "lng": 109.2662}, {"wilayah": "purbalingga - padamara", "kabupaten": "Purbalingga", "kecamatan": "padamara", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.4037, "lng": 109.5066}, {"wilayah": "purbalingga - kutasari", "kabupaten": "Purbalingga", "kecamatan": "kutasari", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.4931, "lng": 109.2841}, {"wilayah": "purbalingga - bojongsari", "kabupaten": "Purbalingga", "kecamatan": "bojongsari", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.4284, "lng": 109.4109}, {"wilayah": "purbalingga - mrebet", "kabupaten": "Purbalingga", "kecamatan": "mrebet", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.3426, "lng": 109.4155}, {"wilayah": "purbalingga - bobotsari", "kabupaten": "Purbalingga", "kecamatan": "bobotsari", "cluster": "L-FSG", "ikp": 80.1, "lat": -7.4897, "lng": 109.5014}, {"wilayah": "purbalingga - karangreja", "kabupaten": "Purbalingga", "kecamatan": "karangreja", "cluster": "L-FSG", "ikp": 76.3, "lat": -7.4874, "lng": 109.244}, {"wilayah": "purbalingga - karanganyar", "kabupaten": "Purbalingga", "kecamatan": "karanganyar", "cluster": "L-FSG", "ikp": 77.8, "lat": -7.3085, "lng": 109.35}, {"wilayah": "purbalingga - karangmoncol", "kabupaten": "Purbalingga", "kecamatan": "karangmoncol", "cluster": "L-FSG", "ikp": 78.2, "lat": -7.3183, "lng": 109.3912}, {"wilayah": "purbalingga - rembang", "kabupaten": "Purbalingga", "kecamatan": "rembang", "cluster": "L-FSG", "ikp": 77.5, "lat": -7.4701, "lng": 109.3649}, {"wilayah": "purbalingga - pengadegan", "kabupaten": "Purbalingga", "kecamatan": "pengadegan", "cluster": "L-FSG", "ikp": 79.0, "lat": -7.4169, "lng": 109.3049}, {"wilayah": "purbalingga - kertanegara", "kabupaten": "Purbalingga", "kecamatan": "kertanegara", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.3819, "lng": 109.2792}, {"wilayah": "purbalingga - bukateja", "kabupaten": "Purbalingga", "kecamatan": "bukateja", "cluster": "L-FSG", "ikp": 83.4, "lat": -7.4439, "lng": 109.3859}, {"wilayah": "banjarnegara - susukan", "kabupaten": "Banjarnegara", "kecamatan": "susukan", "cluster": "L-FSG", "ikp": 79.2, "lat": -7.27, "lng": 109.6281}, {"wilayah": "banjarnegara - purworejo klampok", "kabupaten": "Banjarnegara", "kecamatan": "purworejo klampok", "cluster": "L-FSG", "ikp": 83.1, "lat": -7.3678, "lng": 109.721}, {"wilayah": "banjarnegara - mandiraja", "kabupaten": "Banjarnegara", "kecamatan": "mandiraja", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.3907, "lng": 109.6916}, {"wilayah": "banjarnegara - purwanegara", "kabupaten": "Banjarnegara", "kecamatan": "purwanegara", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.336, "lng": 109.7377}, {"wilayah": "banjarnegara - bawang", "kabupaten": "Banjarnegara", "kecamatan": "bawang", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.2893, "lng": 109.5635}, {"wilayah": "banjarnegara - banjarnegara", "kabupaten": "Banjarnegara", "kecamatan": "banjarnegara", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.4855, "lng": 109.7987}, {"wilayah": "banjarnegara - sigaluh", "kabupaten": "Banjarnegara", "kecamatan": "sigaluh", "cluster": "L-FSG", "ikp": 77.3, "lat": -7.4312, "lng": 109.7668}, {"wilayah": "banjarnegara - madukara", "kabupaten": "Banjarnegara", "kecamatan": "madukara", "cluster": "L-FSG", "ikp": 76.8, "lat": -7.4106, "lng": 109.6094}, {"wilayah": "banjarnegara - banjarmangu", "kabupaten": "Banjarnegara", "kecamatan": "banjarmangu", "cluster": "L-FSG", "ikp": 75.4, "lat": -7.4882, "lng": 109.6875}, {"wilayah": "banjarnegara - wanadadi", "kabupaten": "Banjarnegara", "kecamatan": "wanadadi", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.3843, "lng": 109.5699}, {"wilayah": "banjarnegara - rakit", "kabupaten": "Banjarnegara", "kecamatan": "rakit", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.4271, "lng": 109.6502}, {"wilayah": "banjarnegara - punggelan", "kabupaten": "Banjarnegara", "kecamatan": "punggelan", "cluster": "L-FSG", "ikp": 74.2, "lat": -7.3631, "lng": 109.5868}, {"wilayah": "banjarnegara - karangkobar", "kabupaten": "Banjarnegara", "kecamatan": "karangkobar", "cluster": "L-FSG", "ikp": 72.5, "lat": -7.3838, "lng": 109.8363}, {"wilayah": "banjarnegara - wanayasa", "kabupaten": "Banjarnegara", "kecamatan": "wanayasa", "cluster": "L-FSG", "ikp": 47.1, "lat": -7.3695, "lng": 109.6195}, {"wilayah": "banjarnegara - kalibening", "kabupaten": "Banjarnegara", "kecamatan": "kalibening", "cluster": "L-FSG", "ikp": 70.3, "lat": -7.2845, "lng": 109.7488}, {"wilayah": "banjarnegara - pagentan", "kabupaten": "Banjarnegara", "kecamatan": "pagentan", "cluster": "L-FSG", "ikp": 71.8, "lat": -7.27, "lng": 109.5903}, {"wilayah": "banjarnegara - pejawaran", "kabupaten": "Banjarnegara", "kecamatan": "pejawaran", "cluster": "L-FSG", "ikp": 69.5, "lat": -7.4965, "lng": 109.5655}, {"wilayah": "banjarnegara - batur", "kabupaten": "Banjarnegara", "kecamatan": "batur", "cluster": "L-FSG", "ikp": 68.2, "lat": -7.4831, "lng": 109.6575}, {"wilayah": "banjarnegara - pagedongan", "kabupaten": "Banjarnegara", "kecamatan": "pagedongan", "cluster": "L-FSG", "ikp": 73.4, "lat": -7.4757, "lng": 109.655}, {"wilayah": "banjarnegara - pandanarum", "kabupaten": "Banjarnegara", "kecamatan": "pandanarum", "cluster": "L-FSG", "ikp": 67.9, "lat": -7.4201, "lng": 109.798}, {"wilayah": "kebumen - ayah", "kabupaten": "Kebumen", "kecamatan": "ayah", "cluster": "L-FSG", "ikp": 78.4, "lat": -7.5794, "lng": 109.7678}, {"wilayah": "kebumen - buayan", "kabupaten": "Kebumen", "kecamatan": "buayan", "cluster": "L-FSG", "ikp": 77.2, "lat": -7.6945, "lng": 109.6343}, {"wilayah": "kebumen - puring", "kabupaten": "Kebumen", "kecamatan": "puring", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.5507, "lng": 109.6367}, {"wilayah": "kebumen - petanahan", "kabupaten": "Kebumen", "kecamatan": "petanahan", "cluster": "L-FSG", "ikp": 80.3, "lat": -7.6152, "lng": 109.5588}, {"wilayah": "kebumen - klirong", "kabupaten": "Kebumen", "kecamatan": "klirong", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.6105, "lng": 109.658}, {"wilayah": "kebumen - buluspesantren", "kabupaten": "Kebumen", "kecamatan": "buluspesantren", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.7481, "lng": 109.6777}, {"wilayah": "kebumen - ambal", "kabupaten": "Kebumen", "kecamatan": "ambal", "cluster": "L-FSG", "ikp": 80.1, "lat": -7.5742, "lng": 109.5846}, {"wilayah": "kebumen - mirit", "kabupaten": "Kebumen", "kecamatan": "mirit", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.5694, "lng": 109.514}, {"wilayah": "kebumen - bonorowo", "kabupaten": "Kebumen", "kecamatan": "bonorowo", "cluster": "L-FSG", "ikp": 78.5, "lat": -7.7237, "lng": 109.6484}, {"wilayah": "kebumen - prembun", "kabupaten": "Kebumen", "kecamatan": "prembun", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.6109, "lng": 109.6686}, {"wilayah": "kebumen - kutowinangun", "kabupaten": "Kebumen", "kecamatan": "kutowinangun", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.5624, "lng": 109.6253}, {"wilayah": "kebumen - alian", "kabupaten": "Kebumen", "kecamatan": "alian", "cluster": "L-FSG", "ikp": 80.9, "lat": -7.5845, "lng": 109.7687}, {"wilayah": "kebumen - poncowarno", "kabupaten": "Kebumen", "kecamatan": "poncowarno", "cluster": "L-FSG", "ikp": 79.3, "lat": -7.7696, "lng": 109.5275}, {"wilayah": "kebumen - kebumen", "kabupaten": "Kebumen", "kecamatan": "kebumen", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.6651, "lng": 109.5849}, {"wilayah": "kebumen - pejagoan", "kabupaten": "Kebumen", "kecamatan": "pejagoan", "cluster": "L-FSG", "ikp": 81.7, "lat": -7.6049, "lng": 109.5762}, {"wilayah": "kebumen - sruweng", "kabupaten": "Kebumen", "kecamatan": "sruweng", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.6339, "lng": 109.7407}, {"wilayah": "kebumen - adimulyo", "kabupaten": "Kebumen", "kecamatan": "adimulyo", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.5815, "lng": 109.6323}, {"wilayah": "kebumen - kuwarasan", "kabupaten": "Kebumen", "kecamatan": "kuwarasan", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.6527, "lng": 109.7805}, {"wilayah": "kebumen - rowokele", "kabupaten": "Kebumen", "kecamatan": "rowokele", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.721, "lng": 109.7418}, {"wilayah": "kebumen - sempor", "kabupaten": "Kebumen", "kecamatan": "sempor", "cluster": "L-FSG", "ikp": 77.5, "lat": -7.7698, "lng": 109.5827}, {"wilayah": "kebumen - gombong", "kabupaten": "Kebumen", "kecamatan": "gombong", "cluster": "L-FSG", "ikp": 82.8, "lat": -7.6334, "lng": 109.5871}, {"wilayah": "kebumen - karanganyar", "kabupaten": "Kebumen", "kecamatan": "karanganyar", "cluster": "L-FSG", "ikp": 79.1, "lat": -7.7042, "lng": 109.7138}, {"wilayah": "kebumen - karanggayam", "kabupaten": "Kebumen", "kecamatan": "karanggayam", "cluster": "L-FSG", "ikp": 74.3, "lat": -7.6657, "lng": 109.7947}, {"wilayah": "kebumen - sadang", "kabupaten": "Kebumen", "kecamatan": "sadang", "cluster": "L-FSG", "ikp": 72.8, "lat": -7.5522, "lng": 109.782}, {"wilayah": "kebumen - karangsambung", "kabupaten": "Kebumen", "kecamatan": "karangsambung", "cluster": "L-FSG", "ikp": 73.5, "lat": -7.5927, "lng": 109.7043}, {"wilayah": "kebumen - padureso", "kabupaten": "Kebumen", "kecamatan": "padureso", "cluster": "L-FSG", "ikp": 74.1, "lat": -7.6977, "lng": 109.7166}, {"wilayah": "purworejo - grabag", "kabupaten": "Purworejo", "kecamatan": "grabag", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.6825, "lng": 110.1132}, {"wilayah": "purworejo - ngombol", "kabupaten": "Purworejo", "kecamatan": "ngombol", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.6282, "lng": 110.0656}, {"wilayah": "purworejo - purwodadi", "kabupaten": "Purworejo", "kecamatan": "purwodadi", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.7652, "lng": 109.9661}, {"wilayah": "purworejo - bagelen", "kabupaten": "Purworejo", "kecamatan": "bagelen", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.6654, "lng": 110.048}, {"wilayah": "purworejo - kaligesing", "kabupaten": "Purworejo", "kecamatan": "kaligesing", "cluster": "L-FSG", "ikp": 79.3, "lat": -7.7311, "lng": 110.001}, {"wilayah": "purworejo - purworejo", "kabupaten": "Purworejo", "kecamatan": "purworejo", "cluster": "L-FSG", "ikp": 83.7, "lat": -7.798, "lng": 109.9349}, {"wilayah": "purworejo - banyuurip", "kabupaten": "Purworejo", "kecamatan": "banyuurip", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.7938, "lng": 110.1353}, {"wilayah": "purworejo - bayan", "kabupaten": "Purworejo", "kecamatan": "bayan", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.6146, "lng": 110.1348}, {"wilayah": "purworejo - kutoarjo", "kabupaten": "Purworejo", "kecamatan": "kutoarjo", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.7135, "lng": 110.1185}, {"wilayah": "purworejo - butuh", "kabupaten": "Purworejo", "kecamatan": "butuh", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.8171, "lng": 109.9073}, {"wilayah": "purworejo - pituruh", "kabupaten": "Purworejo", "kecamatan": "pituruh", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.6014, "lng": 109.9341}, {"wilayah": "purworejo - kemiri", "kabupaten": "Purworejo", "kecamatan": "kemiri", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.648, "lng": 109.9711}, {"wilayah": "purworejo - bruno", "kabupaten": "Purworejo", "kecamatan": "bruno", "cluster": "L-FSG", "ikp": 77.2, "lat": -7.6446, "lng": 109.9428}, {"wilayah": "purworejo - gebang", "kabupaten": "Purworejo", "kecamatan": "gebang", "cluster": "L-FSG", "ikp": 78.5, "lat": -7.7628, "lng": 109.9643}, {"wilayah": "purworejo - loano", "kabupaten": "Purworejo", "kecamatan": "loano", "cluster": "L-FSG", "ikp": 80.9, "lat": -7.7962, "lng": 110.0914}, {"wilayah": "purworejo - bener", "kabupaten": "Purworejo", "kecamatan": "bener", "cluster": "L-FSG", "ikp": 78.8, "lat": -7.7616, "lng": 110.0744}, {"wilayah": "wonosobo - wadaslintang", "kabupaten": "Wonosobo", "kecamatan": "wadaslintang", "cluster": "L-FSG", "ikp": 76.3, "lat": -7.3221, "lng": 109.8172}, {"wilayah": "wonosobo - kepil", "kabupaten": "Wonosobo", "kecamatan": "kepil", "cluster": "L-FSG", "ikp": 74.5, "lat": -7.4479, "lng": 109.7887}, {"wilayah": "wonosobo - sapuran", "kabupaten": "Wonosobo", "kecamatan": "sapuran", "cluster": "L-FSG", "ikp": 75.8, "lat": -7.2515, "lng": 110.0347}, {"wilayah": "wonosobo - kaliwiro", "kabupaten": "Wonosobo", "kecamatan": "kaliwiro", "cluster": "L-FSG", "ikp": 76.2, "lat": -7.3236, "lng": 110.0123}, {"wilayah": "wonosobo - leksono", "kabupaten": "Wonosobo", "kecamatan": "leksono", "cluster": "L-FSG", "ikp": 77.1, "lat": -7.4755, "lng": 109.8909}, {"wilayah": "wonosobo - sukoharjo", "kabupaten": "Wonosobo", "kecamatan": "sukoharjo", "cluster": "L-FSG", "ikp": 75.4, "lat": -7.2412, "lng": 109.9075}, {"wilayah": "wonosobo - selomerto", "kabupaten": "Wonosobo", "kecamatan": "selomerto", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.3083, "lng": 109.96}, {"wilayah": "wonosobo - kalikajar", "kabupaten": "Wonosobo", "kecamatan": "kalikajar", "cluster": "L-FSG", "ikp": 74.7, "lat": -7.3143, "lng": 109.7856}, {"wilayah": "wonosobo - kertek", "kabupaten": "Wonosobo", "kecamatan": "kertek", "cluster": "L-FSG", "ikp": 76.5, "lat": -7.4123, "lng": 109.9696}, {"wilayah": "wonosobo - wonosobo", "kabupaten": "Wonosobo", "kecamatan": "wonosobo", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.2967, "lng": 110.0476}, {"wilayah": "wonosobo - watumalang", "kabupaten": "Wonosobo", "kecamatan": "watumalang", "cluster": "L-FSG", "ikp": 73.8, "lat": -7.3715, "lng": 109.9894}, {"wilayah": "wonosobo - mojotengah", "kabupaten": "Wonosobo", "kecamatan": "mojotengah", "cluster": "L-FSG", "ikp": 75.1, "lat": -7.4423, "lng": 109.9879}, {"wilayah": "wonosobo - garung", "kabupaten": "Wonosobo", "kecamatan": "garung", "cluster": "L-FSG", "ikp": 72.4, "lat": -7.2748, "lng": 109.8082}, {"wilayah": "wonosobo - kejajar", "kabupaten": "Wonosobo", "kecamatan": "kejajar", "cluster": "L-FSG", "ikp": 69.3, "lat": -7.295, "lng": 110.0122}, {"wilayah": "wonosobo - candiroto", "kabupaten": "Wonosobo", "kecamatan": "candiroto", "cluster": "L-FSG", "ikp": 73.2, "lat": -7.3731, "lng": 110.0427}, {"wilayah": "magelang - salaman", "kabupaten": "Magelang", "kecamatan": "salaman", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.5476, "lng": 110.0874}, {"wilayah": "magelang - borobudur", "kabupaten": "Magelang", "kecamatan": "borobudur", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.5547, "lng": 110.1923}, {"wilayah": "magelang - ngluwar", "kabupaten": "Magelang", "kecamatan": "ngluwar", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.3652, "lng": 110.1407}, {"wilayah": "magelang - salam", "kabupaten": "Magelang", "kecamatan": "salam", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.51, "lng": 110.2522}, {"wilayah": "magelang - srumbung", "kabupaten": "Magelang", "kecamatan": "srumbung", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.5399, "lng": 110.114}, {"wilayah": "magelang - dukun", "kabupaten": "Magelang", "kecamatan": "dukun", "cluster": "L-FSG", "ikp": 78.2, "lat": -7.3972, "lng": 110.2516}, {"wilayah": "magelang - muntilan", "kabupaten": "Magelang", "kecamatan": "muntilan", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.3548, "lng": 110.3694}, {"wilayah": "magelang - mungkid", "kabupaten": "Magelang", "kecamatan": "mungkid", "cluster": "L-FSG", "ikp": 82.7, "lat": -7.5142, "lng": 110.1806}, {"wilayah": "magelang - sawangan", "kabupaten": "Magelang", "kecamatan": "sawangan", "cluster": "L-FSG", "ikp": 80.1, "lat": -7.3839, "lng": 110.3584}, {"wilayah": "magelang - candimulyo", "kabupaten": "Magelang", "kecamatan": "candimulyo", "cluster": "L-FSG", "ikp": 80.9, "lat": -7.5075, "lng": 110.1308}, {"wilayah": "magelang - mertoyudan", "kabupaten": "Magelang", "kecamatan": "mertoyudan", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.5113, "lng": 110.2353}, {"wilayah": "magelang - tempuran", "kabupaten": "Magelang", "kecamatan": "tempuran", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.3855, "lng": 110.2379}, {"wilayah": "magelang - kajoran", "kabupaten": "Magelang", "kecamatan": "kajoran", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.3553, "lng": 110.3004}, {"wilayah": "magelang - kaliangkrik", "kabupaten": "Magelang", "kecamatan": "kaliangkrik", "cluster": "L-FSG", "ikp": 77.3, "lat": -7.4561, "lng": 110.0748}, {"wilayah": "magelang - bandongan", "kabupaten": "Magelang", "kecamatan": "bandongan", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.4189, "lng": 110.2386}, {"wilayah": "magelang - windusari", "kabupaten": "Magelang", "kecamatan": "windusari", "cluster": "L-FSG", "ikp": 78.1, "lat": -7.5039, "lng": 110.2462}, {"wilayah": "magelang - secang", "kabupaten": "Magelang", "kecamatan": "secang", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.3985, "lng": 110.1436}, {"wilayah": "magelang - tegalrejo", "kabupaten": "Magelang", "kecamatan": "tegalrejo", "cluster": "L-FSG", "ikp": 81.7, "lat": -7.3752, "lng": 110.1515}, {"wilayah": "magelang - pakis", "kabupaten": "Magelang", "kecamatan": "pakis", "cluster": "L-FSG", "ikp": 77.9, "lat": -7.5449, "lng": 110.3224}, {"wilayah": "magelang - grabag", "kabupaten": "Magelang", "kecamatan": "grabag", "cluster": "L-FSG", "ikp": 79.2, "lat": -7.4825, "lng": 110.2657}, {"wilayah": "magelang - ngablak", "kabupaten": "Magelang", "kecamatan": "ngablak", "cluster": "L-FSG", "ikp": 76.5, "lat": -7.3773, "lng": 110.1304}, {"wilayah": "boyolali - selo", "kabupaten": "Boyolali", "kecamatan": "selo", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.4213, "lng": 110.584}, {"wilayah": "boyolali - ampel", "kabupaten": "Boyolali", "kecamatan": "ampel", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.5563, "lng": 110.4542}, {"wilayah": "boyolali - cepogo", "kabupaten": "Boyolali", "kecamatan": "cepogo", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.487, "lng": 110.5467}, {"wilayah": "boyolali - musuk", "kabupaten": "Boyolali", "kecamatan": "musuk", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.5536, "lng": 110.4923}, {"wilayah": "boyolali - boyolali", "kabupaten": "Boyolali", "kecamatan": "boyolali", "cluster": "H-FSG", "ikp": 87.4, "lat": -7.6251, "lng": 110.5685}, {"wilayah": "boyolali - mojosongo", "kabupaten": "Boyolali", "kecamatan": "mojosongo", "cluster": "L-FSG", "ikp": 84.2, "lat": -7.4412, "lng": 110.7222}, {"wilayah": "boyolali - teras", "kabupaten": "Boyolali", "kecamatan": "teras", "cluster": "L-FSG", "ikp": 84.7, "lat": -7.4692, "lng": 110.549}, {"wilayah": "boyolali - sawit", "kabupaten": "Boyolali", "kecamatan": "sawit", "cluster": "L-FSG", "ikp": 83.9, "lat": -7.6175, "lng": 110.5758}, {"wilayah": "boyolali - banyudono", "kabupaten": "Boyolali", "kecamatan": "banyudono", "cluster": "L-FSG", "ikp": 84.5, "lat": -7.6401, "lng": 110.643}, {"wilayah": "boyolali - sambi", "kabupaten": "Boyolali", "kecamatan": "sambi", "cluster": "L-FSG", "ikp": 83.2, "lat": -7.4205, "lng": 110.5413}, {"wilayah": "boyolali - ngemplak", "kabupaten": "Boyolali", "kecamatan": "ngemplak", "cluster": "L-FSG", "ikp": 84.9, "lat": -7.5556, "lng": 110.4642}, {"wilayah": "boyolali - nogosari", "kabupaten": "Boyolali", "kecamatan": "nogosari", "cluster": "L-FSG", "ikp": 83.7, "lat": -7.514, "lng": 110.491}, {"wilayah": "boyolali - simo", "kabupaten": "Boyolali", "kecamatan": "simo", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.5649, "lng": 110.4787}, {"wilayah": "boyolali - karanggede", "kabupaten": "Boyolali", "kecamatan": "karanggede", "cluster": "L-FSG", "ikp": 82.8, "lat": -7.433, "lng": 110.7}, {"wilayah": "boyolali - klego", "kabupaten": "Boyolali", "kecamatan": "klego", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.5834, "lng": 110.7362}, {"wilayah": "boyolali - andong", "kabupaten": "Boyolali", "kecamatan": "andong", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.6064, "lng": 110.5733}, {"wilayah": "boyolali - kemusu", "kabupaten": "Boyolali", "kecamatan": "kemusu", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.4271, "lng": 110.5651}, {"wilayah": "boyolali - wonosegoro", "kabupaten": "Boyolali", "kecamatan": "wonosegoro", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.5989, "lng": 110.5387}, {"wilayah": "boyolali - juwangi", "kabupaten": "Boyolali", "kecamatan": "juwangi", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.4789, "lng": 110.5579}, {"wilayah": "klaten - prambanan", "kabupaten": "Klaten", "kecamatan": "prambanan", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.7881, "lng": 110.4615}, {"wilayah": "klaten - gantiwarno", "kabupaten": "Klaten", "kecamatan": "gantiwarno", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.7832, "lng": 110.6457}, {"wilayah": "klaten - wedi", "kabupaten": "Klaten", "kecamatan": "wedi", "cluster": "L-FSG", "ikp": 84.2, "lat": -7.6747, "lng": 110.6322}, {"wilayah": "klaten - bayat", "kabupaten": "Klaten", "kecamatan": "bayat", "cluster": "L-FSG", "ikp": 82.7, "lat": -7.6859, "lng": 110.7306}, {"wilayah": "klaten - cawas", "kabupaten": "Klaten", "kecamatan": "cawas", "cluster": "L-FSG", "ikp": 83.1, "lat": -7.6938, "lng": 110.6439}, {"wilayah": "klaten - trucuk", "kabupaten": "Klaten", "kecamatan": "trucuk", "cluster": "L-FSG", "ikp": 84.5, "lat": -7.606, "lng": 110.61}, {"wilayah": "klaten - kalikotes", "kabupaten": "Klaten", "kecamatan": "kalikotes", "cluster": "L-FSG", "ikp": 84.8, "lat": -7.6193, "lng": 110.5164}, {"wilayah": "klaten - kebonarum", "kabupaten": "Klaten", "kecamatan": "kebonarum", "cluster": "L-FSG", "ikp": 84.3, "lat": -7.6989, "lng": 110.4675}, {"wilayah": "klaten - jogonalan", "kabupaten": "Klaten", "kecamatan": "jogonalan", "cluster": "H-FSG", "ikp": 87.2, "lat": -7.6433, "lng": 110.4626}, {"wilayah": "klaten - manisrenggo", "kabupaten": "Klaten", "kecamatan": "manisrenggo", "cluster": "L-FSG", "ikp": 83.7, "lat": -7.7623, "lng": 110.4608}, {"wilayah": "klaten - karangnongko", "kabupaten": "Klaten", "kecamatan": "karangnongko", "cluster": "L-FSG", "ikp": 83.2, "lat": -7.5955, "lng": 110.4922}, {"wilayah": "klaten - ngawen", "kabupaten": "Klaten", "kecamatan": "ngawen", "cluster": "L-FSG", "ikp": 84.1, "lat": -7.8051, "lng": 110.5063}, {"wilayah": "klaten - ceper", "kabupaten": "Klaten", "kecamatan": "ceper", "cluster": "L-FSG", "ikp": 84.7, "lat": -7.6191, "lng": 110.5952}, {"wilayah": "klaten - pedan", "kabupaten": "Klaten", "kecamatan": "pedan", "cluster": "L-FSG", "ikp": 84.3, "lat": -7.8137, "lng": 110.477}, {"wilayah": "klaten - karangdowo", "kabupaten": "Klaten", "kecamatan": "karangdowo", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.7052, "lng": 110.5239}, {"wilayah": "klaten - juwiring", "kabupaten": "Klaten", "kecamatan": "juwiring", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.8211, "lng": 110.635}, {"wilayah": "klaten - wonosari", "kabupaten": "Klaten", "kecamatan": "wonosari", "cluster": "L-FSG", "ikp": 84.0, "lat": -7.7656, "lng": 110.5406}, {"wilayah": "klaten - delanggu", "kabupaten": "Klaten", "kecamatan": "delanggu", "cluster": "H-FSG", "ikp": 86.8, "lat": -7.7688, "lng": 110.7499}, {"wilayah": "klaten - polanharjo", "kabupaten": "Klaten", "kecamatan": "polanharjo", "cluster": "L-FSG", "ikp": 84.6, "lat": -7.6963, "lng": 110.5147}, {"wilayah": "klaten - karanganom", "kabupaten": "Klaten", "kecamatan": "karanganom", "cluster": "H-FSG", "ikp": 87.5, "lat": -7.661, "lng": 110.6265}, {"wilayah": "klaten - tulung", "kabupaten": "Klaten", "kecamatan": "tulung", "cluster": "L-FSG", "ikp": 83.9, "lat": -7.6442, "lng": 110.4715}, {"wilayah": "klaten - jatinom", "kabupaten": "Klaten", "kecamatan": "jatinom", "cluster": "L-FSG", "ikp": 83.4, "lat": -7.6509, "lng": 110.4579}, {"wilayah": "klaten - kemalang", "kabupaten": "Klaten", "kecamatan": "kemalang", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.6593, "lng": 110.541}, {"wilayah": "klaten - klaten selatan", "kabupaten": "Klaten", "kecamatan": "klaten selatan", "cluster": "H-FSG", "ikp": 88.3, "lat": -7.7376, "lng": 110.4658}, {"wilayah": "klaten - klaten tengah", "kabupaten": "Klaten", "kecamatan": "klaten tengah", "cluster": "H-FSG", "ikp": 89.1, "lat": -7.654, "lng": 110.5488}, {"wilayah": "klaten - klaten utara", "kabupaten": "Klaten", "kecamatan": "klaten utara", "cluster": "H-FSG", "ikp": 88.7, "lat": -7.6676, "lng": 110.7108}, {"wilayah": "sukoharjo - weru", "kabupaten": "Sukoharjo", "kecamatan": "weru", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.6997, "lng": 110.6995}, {"wilayah": "sukoharjo - bulu", "kabupaten": "Sukoharjo", "kecamatan": "bulu", "cluster": "L-FSG", "ikp": 83.2, "lat": -7.68, "lng": 110.9355}, {"wilayah": "sukoharjo - tawangsari", "kabupaten": "Sukoharjo", "kecamatan": "tawangsari", "cluster": "L-FSG", "ikp": 84.1, "lat": -7.7563, "lng": 110.6963}, {"wilayah": "sukoharjo - sukoharjo", "kabupaten": "Sukoharjo", "kecamatan": "sukoharjo", "cluster": "H-FSG", "ikp": 88.5, "lat": -7.7056, "lng": 110.9374}, {"wilayah": "sukoharjo - nguter", "kabupaten": "Sukoharjo", "kecamatan": "nguter", "cluster": "L-FSG", "ikp": 84.3, "lat": -7.7537, "lng": 110.761}, {"wilayah": "sukoharjo - bendosari", "kabupaten": "Sukoharjo", "kecamatan": "bendosari", "cluster": "L-FSG", "ikp": 84.7, "lat": -7.6693, "lng": 110.8285}, {"wilayah": "sukoharjo - polokarto", "kabupaten": "Sukoharjo", "kecamatan": "polokarto", "cluster": "L-FSG", "ikp": 84.5, "lat": -7.7543, "lng": 110.8606}, {"wilayah": "sukoharjo - mojolaban", "kabupaten": "Sukoharjo", "kecamatan": "mojolaban", "cluster": "L-FSG", "ikp": 84.9, "lat": -7.6649, "lng": 110.9876}, {"wilayah": "sukoharjo - grogol", "kabupaten": "Sukoharjo", "kecamatan": "grogol", "cluster": "H-FSG", "ikp": 87.8, "lat": -7.5894, "lng": 110.9672}, {"wilayah": "sukoharjo - baki", "kabupaten": "Sukoharjo", "kecamatan": "baki", "cluster": "L-FSG", "ikp": 85.1, "lat": -7.7185, "lng": 110.7052}, {"wilayah": "sukoharjo - gatak", "kabupaten": "Sukoharjo", "kecamatan": "gatak", "cluster": "L-FSG", "ikp": 84.8, "lat": -7.6404, "lng": 110.845}, {"wilayah": "sukoharjo - kartasura", "kabupaten": "Sukoharjo", "kecamatan": "kartasura", "cluster": "H-FSG", "ikp": 88.2, "lat": -7.5719, "lng": 110.9746}, {"wilayah": "wonogiri - pracimantoro", "kabupaten": "Wonogiri", "kecamatan": "pracimantoro", "cluster": "L-FSG", "ikp": 76.3, "lat": -7.797, "lng": 110.9351}, {"wilayah": "wonogiri - paranggupito", "kabupaten": "Wonogiri", "kecamatan": "paranggupito", "cluster": "L-FSG", "ikp": 72.4, "lat": -7.7826, "lng": 110.9434}, {"wilayah": "wonogiri - giritontro", "kabupaten": "Wonogiri", "kecamatan": "giritontro", "cluster": "L-FSG", "ikp": 74.5, "lat": -7.7485, "lng": 111.1121}, {"wilayah": "wonogiri - giriwoyo", "kabupaten": "Wonogiri", "kecamatan": "giriwoyo", "cluster": "L-FSG", "ikp": 75.8, "lat": -7.9243, "lng": 111.1127}, {"wilayah": "wonogiri - batuwarno", "kabupaten": "Wonogiri", "kecamatan": "batuwarno", "cluster": "L-FSG", "ikp": 76.2, "lat": -7.8569, "lng": 110.9561}, {"wilayah": "wonogiri - karangtengah", "kabupaten": "Wonogiri", "kecamatan": "karangtengah", "cluster": "L-FSG", "ikp": 77.1, "lat": -7.7639, "lng": 111.0383}, {"wilayah": "wonogiri - tirtomoyo", "kabupaten": "Wonogiri", "kecamatan": "tirtomoyo", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.7641, "lng": 110.9206}, {"wilayah": "wonogiri - nguntoronadi", "kabupaten": "Wonogiri", "kecamatan": "nguntoronadi", "cluster": "L-FSG", "ikp": 77.5, "lat": -7.7148, "lng": 111.1075}, {"wilayah": "wonogiri - baturetno", "kabupaten": "Wonogiri", "kecamatan": "baturetno", "cluster": "L-FSG", "ikp": 79.2, "lat": -7.7867, "lng": 110.9783}, {"wilayah": "wonogiri - eromoko", "kabupaten": "Wonogiri", "kecamatan": "eromoko", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.8786, "lng": 111.1128}, {"wilayah": "wonogiri - wuryantoro", "kabupaten": "Wonogiri", "kecamatan": "wuryantoro", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.8892, "lng": 110.9731}, {"wilayah": "wonogiri - manyaran", "kabupaten": "Wonogiri", "kecamatan": "manyaran", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.6931, "lng": 111.0053}, {"wilayah": "wonogiri - selogiri", "kabupaten": "Wonogiri", "kecamatan": "selogiri", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.8083, "lng": 110.9616}, {"wilayah": "wonogiri - wonogiri", "kabupaten": "Wonogiri", "kecamatan": "wonogiri", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.8372, "lng": 110.9869}, {"wilayah": "wonogiri - ngadirojo", "kabupaten": "Wonogiri", "kecamatan": "ngadirojo", "cluster": "L-FSG", "ikp": 79.7, "lat": -7.8169, "lng": 111.1247}, {"wilayah": "wonogiri - sidoharjo", "kabupaten": "Wonogiri", "kecamatan": "sidoharjo", "cluster": "L-FSG", "ikp": 80.1, "lat": -7.7385, "lng": 110.9308}, {"wilayah": "wonogiri - jatiroto", "kabupaten": "Wonogiri", "kecamatan": "jatiroto", "cluster": "L-FSG", "ikp": 78.4, "lat": -7.8448, "lng": 110.9343}, {"wilayah": "wonogiri - kismantoro", "kabupaten": "Wonogiri", "kecamatan": "kismantoro", "cluster": "L-FSG", "ikp": 74.2, "lat": -7.9241, "lng": 111.1454}, {"wilayah": "wonogiri - purwantoro", "kabupaten": "Wonogiri", "kecamatan": "purwantoro", "cluster": "L-FSG", "ikp": 76.5, "lat": -7.8011, "lng": 110.976}, {"wilayah": "wonogiri - bulukerto", "kabupaten": "Wonogiri", "kecamatan": "bulukerto", "cluster": "L-FSG", "ikp": 75.3, "lat": -7.7613, "lng": 111.0243}, {"wilayah": "wonogiri - puhpelem", "kabupaten": "Wonogiri", "kecamatan": "puhpelem", "cluster": "L-FSG", "ikp": 74.8, "lat": -7.8497, "lng": 110.9671}, {"wilayah": "wonogiri - slogohimo", "kabupaten": "Wonogiri", "kecamatan": "slogohimo", "cluster": "L-FSG", "ikp": 76.8, "lat": -7.76, "lng": 110.9136}, {"wilayah": "wonogiri - jatisrono", "kabupaten": "Wonogiri", "kecamatan": "jatisrono", "cluster": "L-FSG", "ikp": 78.9, "lat": -7.872, "lng": 110.8886}, {"wilayah": "wonogiri - jatipurno", "kabupaten": "Wonogiri", "kecamatan": "jatipurno", "cluster": "L-FSG", "ikp": 77.3, "lat": -7.7901, "lng": 111.0908}, {"wilayah": "wonogiri - girimarto", "kabupaten": "Wonogiri", "kecamatan": "girimarto", "cluster": "L-FSG", "ikp": 76.1, "lat": -7.7206, "lng": 111.0437}, {"wilayah": "karanganyar - jatipuro", "kabupaten": "Karanganyar", "kecamatan": "jatipuro", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.5136, "lng": 111.0015}, {"wilayah": "karanganyar - jatiyoso", "kabupaten": "Karanganyar", "kecamatan": "jatiyoso", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.6035, "lng": 111.1305}, {"wilayah": "karanganyar - jumapolo", "kabupaten": "Karanganyar", "kecamatan": "jumapolo", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.6249, "lng": 110.9534}, {"wilayah": "karanganyar - jumantono", "kabupaten": "Karanganyar", "kecamatan": "jumantono", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.6798, "lng": 110.8943}, {"wilayah": "karanganyar - matesih", "kabupaten": "Karanganyar", "kecamatan": "matesih", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.6773, "lng": 110.9254}, {"wilayah": "karanganyar - tawangmangu", "kabupaten": "Karanganyar", "kecamatan": "tawangmangu", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.5791, "lng": 111.0792}, {"wilayah": "karanganyar - ngargoyoso", "kabupaten": "Karanganyar", "kecamatan": "ngargoyoso", "cluster": "L-FSG", "ikp": 79.3, "lat": -7.529, "lng": 110.9744}, {"wilayah": "karanganyar - karangpandan", "kabupaten": "Karanganyar", "kecamatan": "karangpandan", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.5482, "lng": 110.988}, {"wilayah": "karanganyar - karanganyar", "kabupaten": "Karanganyar", "kecamatan": "karanganyar", "cluster": "H-FSG", "ikp": 87.3, "lat": -7.5578, "lng": 110.8958}, {"wilayah": "karanganyar - tasikmadu", "kabupaten": "Karanganyar", "kecamatan": "tasikmadu", "cluster": "H-FSG", "ikp": 87.8, "lat": -7.519, "lng": 111.022}, {"wilayah": "karanganyar - jaten", "kabupaten": "Karanganyar", "kecamatan": "jaten", "cluster": "H-FSG", "ikp": 88.2, "lat": -7.7162, "lng": 110.9854}, {"wilayah": "karanganyar - colomadu", "kabupaten": "Karanganyar", "kecamatan": "colomadu", "cluster": "H-FSG", "ikp": 88.7, "lat": -7.5418, "lng": 111.1202}, {"wilayah": "karanganyar - gondangrejo", "kabupaten": "Karanganyar", "kecamatan": "gondangrejo", "cluster": "L-FSG", "ikp": 83.4, "lat": -7.713, "lng": 111.0653}, {"wilayah": "karanganyar - kebakkramat", "kabupaten": "Karanganyar", "kecamatan": "kebakkramat", "cluster": "L-FSG", "ikp": 83.8, "lat": -7.538, "lng": 111.1329}, {"wilayah": "karanganyar - mojogedang", "kabupaten": "Karanganyar", "kecamatan": "mojogedang", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.6412, "lng": 111.0819}, {"wilayah": "karanganyar - kerjo", "kabupaten": "Karanganyar", "kecamatan": "kerjo", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.6849, "lng": 111.0819}, {"wilayah": "karanganyar - jenawi", "kabupaten": "Karanganyar", "kecamatan": "jenawi", "cluster": "L-FSG", "ikp": 78.9, "lat": -7.6698, "lng": 110.9937}, {"wilayah": "sragen - kalijambe", "kabupaten": "Sragen", "kecamatan": "kalijambe", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.4927, "lng": 110.9741}, {"wilayah": "sragen - plupuh", "kabupaten": "Sragen", "kecamatan": "plupuh", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.3719, "lng": 110.954}, {"wilayah": "sragen - masaran", "kabupaten": "Sragen", "kecamatan": "masaran", "cluster": "L-FSG", "ikp": 82.7, "lat": -7.4517, "lng": 111.0679}, {"wilayah": "sragen - kedawung", "kabupaten": "Sragen", "kecamatan": "kedawung", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.4451, "lng": 111.1412}, {"wilayah": "sragen - sambirejo", "kabupaten": "Sragen", "kecamatan": "sambirejo", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.4902, "lng": 111.0496}, {"wilayah": "sragen - gondang", "kabupaten": "Sragen", "kecamatan": "gondang", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.3974, "lng": 111.0581}, {"wilayah": "sragen - sambungmacan", "kabupaten": "Sragen", "kecamatan": "sambungmacan", "cluster": "L-FSG", "ikp": 82.0, "lat": -7.5127, "lng": 110.8784}, {"wilayah": "sragen - ngrampal", "kabupaten": "Sragen", "kecamatan": "ngrampal", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.4313, "lng": 111.0419}, {"wilayah": "sragen - karangmalang", "kabupaten": "Sragen", "kecamatan": "karangmalang", "cluster": "L-FSG", "ikp": 83.1, "lat": -7.454, "lng": 110.9315}, {"wilayah": "sragen - sragen", "kabupaten": "Sragen", "kecamatan": "sragen", "cluster": "L-FSG", "ikp": 83.7, "lat": -7.3771, "lng": 110.9424}, {"wilayah": "sragen - sidoharjo", "kabupaten": "Sragen", "kecamatan": "sidoharjo", "cluster": "L-FSG", "ikp": 82.9, "lat": -7.326, "lng": 111.0153}, {"wilayah": "sragen - tanon", "kabupaten": "Sragen", "kecamatan": "tanon", "cluster": "L-FSG", "ikp": 81.7, "lat": -7.3483, "lng": 111.1393}, {"wilayah": "sragen - gemolong", "kabupaten": "Sragen", "kecamatan": "gemolong", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.4532, "lng": 111.0216}, {"wilayah": "sragen - miri", "kabupaten": "Sragen", "kecamatan": "miri", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.4304, "lng": 111.0778}, {"wilayah": "sragen - sumberlawang", "kabupaten": "Sragen", "kecamatan": "sumberlawang", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.4272, "lng": 111.1139}, {"wilayah": "sragen - mondokan", "kabupaten": "Sragen", "kecamatan": "mondokan", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.3304, "lng": 110.9821}, {"wilayah": "sragen - sukodono", "kabupaten": "Sragen", "kecamatan": "sukodono", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.3899, "lng": 111.0813}, {"wilayah": "sragen - gesi", "kabupaten": "Sragen", "kecamatan": "gesi", "cluster": "L-FSG", "ikp": 79.3, "lat": -7.3214, "lng": 111.043}, {"wilayah": "sragen - tangen", "kabupaten": "Sragen", "kecamatan": "tangen", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.5267, "lng": 111.1588}, {"wilayah": "sragen - jenar", "kabupaten": "Sragen", "kecamatan": "jenar", "cluster": "L-FSG", "ikp": 78.1, "lat": -7.3416, "lng": 110.9986}, {"wilayah": "grobogan - kedungjati", "kabupaten": "Grobogan", "kecamatan": "kedungjati", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.9068, "lng": 111.0285}, {"wilayah": "grobogan - karangrayung", "kabupaten": "Grobogan", "kecamatan": "karangrayung", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.0803, "lng": 110.8821}, {"wilayah": "grobogan - penawangan", "kabupaten": "Grobogan", "kecamatan": "penawangan", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.0409, "lng": 111.004}, {"wilayah": "grobogan - toroh", "kabupaten": "Grobogan", "kecamatan": "toroh", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.0829, "lng": 110.8162}, {"wilayah": "grobogan - geyer", "kabupaten": "Grobogan", "kecamatan": "geyer", "cluster": "L-FSG", "ikp": 79.1, "lat": -7.0499, "lng": 110.8021}, {"wilayah": "grobogan - pulokulon", "kabupaten": "Grobogan", "kecamatan": "pulokulon", "cluster": "L-FSG", "ikp": 79.7, "lat": -7.0577, "lng": 110.765}, {"wilayah": "grobogan - kradenan", "kabupaten": "Grobogan", "kecamatan": "kradenan", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.95, "lng": 110.9185}, {"wilayah": "grobogan - gabus", "kabupaten": "Grobogan", "kecamatan": "gabus", "cluster": "L-FSG", "ikp": 79.3, "lat": -7.0644, "lng": 110.9951}, {"wilayah": "grobogan - ngaringan", "kabupaten": "Grobogan", "kecamatan": "ngaringan", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.9388, "lng": 110.8451}, {"wilayah": "grobogan - wirosari", "kabupaten": "Grobogan", "kecamatan": "wirosari", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.124, "lng": 110.8073}, {"wilayah": "grobogan - tawangharjo", "kabupaten": "Grobogan", "kecamatan": "tawangharjo", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.9901, "lng": 110.973}, {"wilayah": "grobogan - grobogan", "kabupaten": "Grobogan", "kecamatan": "grobogan", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.1252, "lng": 110.9729}, {"wilayah": "grobogan - purwodadi", "kabupaten": "Grobogan", "kecamatan": "purwodadi", "cluster": "L-FSG", "ikp": 82.4, "lat": -7.0235, "lng": 110.9036}, {"wilayah": "grobogan - brati", "kabupaten": "Grobogan", "kecamatan": "brati", "cluster": "L-FSG", "ikp": 80.9, "lat": -6.9869, "lng": 111.0086}, {"wilayah": "grobogan - klambu", "kabupaten": "Grobogan", "kecamatan": "klambu", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.9579, "lng": 111.0337}, {"wilayah": "grobogan - godong", "kabupaten": "Grobogan", "kecamatan": "godong", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.9986, "lng": 110.9423}, {"wilayah": "grobogan - gubug", "kabupaten": "Grobogan", "kecamatan": "gubug", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.9757, "lng": 110.877}, {"wilayah": "grobogan - tegowanu", "kabupaten": "Grobogan", "kecamatan": "tegowanu", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.0436, "lng": 110.8872}, {"wilayah": "grobogan - tanggungharjo", "kabupaten": "Grobogan", "kecamatan": "tanggungharjo", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.107, "lng": 110.9401}, {"wilayah": "blora - jati", "kabupaten": "Blora", "kecamatan": "jati", "cluster": "L-FSG", "ikp": 78.4, "lat": -6.9579, "lng": 111.3761}, {"wilayah": "blora - randublatung", "kabupaten": "Blora", "kecamatan": "randublatung", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.9475, "lng": 111.3485}, {"wilayah": "blora - kradenan", "kabupaten": "Blora", "kecamatan": "kradenan", "cluster": "L-FSG", "ikp": 77.5, "lat": -6.9443, "lng": 111.475}, {"wilayah": "blora - kedungtuban", "kabupaten": "Blora", "kecamatan": "kedungtuban", "cluster": "L-FSG", "ikp": 78.8, "lat": -6.8414, "lng": 111.3763}, {"wilayah": "blora - cepu", "kabupaten": "Blora", "kecamatan": "cepu", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.8624, "lng": 111.3079}, {"wilayah": "blora - sambong", "kabupaten": "Blora", "kecamatan": "sambong", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.9517, "lng": 111.2654}, {"wilayah": "blora - jiken", "kabupaten": "Blora", "kecamatan": "jiken", "cluster": "L-FSG", "ikp": 78.9, "lat": -6.9568, "lng": 111.4746}, {"wilayah": "blora - bogorejo", "kabupaten": "Blora", "kecamatan": "bogorejo", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.861, "lng": 111.5077}, {"wilayah": "blora - jepon", "kabupaten": "Blora", "kecamatan": "jepon", "cluster": "L-FSG", "ikp": 79.7, "lat": -6.8644, "lng": 111.3025}, {"wilayah": "blora - blora", "kabupaten": "Blora", "kecamatan": "blora", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.935, "lng": 111.4196}, {"wilayah": "blora - banjarejo", "kabupaten": "Blora", "kecamatan": "banjarejo", "cluster": "L-FSG", "ikp": 79.3, "lat": -6.8803, "lng": 111.4369}, {"wilayah": "blora - tunjungan", "kabupaten": "Blora", "kecamatan": "tunjungan", "cluster": "L-FSG", "ikp": 78.7, "lat": -6.9281, "lng": 111.4938}, {"wilayah": "blora - japah", "kabupaten": "Blora", "kecamatan": "japah", "cluster": "L-FSG", "ikp": 77.4, "lat": -6.8412, "lng": 111.4351}, {"wilayah": "blora - ngawen", "kabupaten": "Blora", "kecamatan": "ngawen", "cluster": "L-FSG", "ikp": 78.1, "lat": -6.9078, "lng": 111.3541}, {"wilayah": "blora - kunduran", "kabupaten": "Blora", "kecamatan": "kunduran", "cluster": "L-FSG", "ikp": 78.5, "lat": -6.9586, "lng": 111.4937}, {"wilayah": "blora - todanan", "kabupaten": "Blora", "kecamatan": "todanan", "cluster": "L-FSG", "ikp": 77.8, "lat": -7.0701, "lng": 111.4469}, {"wilayah": "rembang - sumber", "kabupaten": "Rembang", "kecamatan": "sumber", "cluster": "L-FSG", "ikp": 79.3, "lat": -6.7615, "lng": 111.2002}, {"wilayah": "rembang - bulu", "kabupaten": "Rembang", "kecamatan": "bulu", "cluster": "L-FSG", "ikp": 78.5, "lat": -6.7166, "lng": 111.3433}, {"wilayah": "rembang - gunem", "kabupaten": "Rembang", "kecamatan": "gunem", "cluster": "L-FSG", "ikp": 77.2, "lat": -6.8164, "lng": 111.4174}, {"wilayah": "rembang - sale", "kabupaten": "Rembang", "kecamatan": "sale", "cluster": "L-FSG", "ikp": 78.8, "lat": -6.7224, "lng": 111.3059}, {"wilayah": "rembang - sarang", "kabupaten": "Rembang", "kecamatan": "sarang", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.7696, "lng": 111.4677}, {"wilayah": "rembang - sedan", "kabupaten": "Rembang", "kecamatan": "sedan", "cluster": "L-FSG", "ikp": 79.1, "lat": -6.7853, "lng": 111.405}, {"wilayah": "rembang - pamotan", "kabupaten": "Rembang", "kecamatan": "pamotan", "cluster": "L-FSG", "ikp": 79.7, "lat": -6.686, "lng": 111.2976}, {"wilayah": "rembang - sulang", "kabupaten": "Rembang", "kecamatan": "sulang", "cluster": "L-FSG", "ikp": 80.2, "lat": -6.7837, "lng": 111.3204}, {"wilayah": "rembang - kaliori", "kabupaten": "Rembang", "kecamatan": "kaliori", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.626, "lng": 111.4885}, {"wilayah": "rembang - rembang", "kabupaten": "Rembang", "kecamatan": "rembang", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.7128, "lng": 111.4152}, {"wilayah": "rembang - pancur", "kabupaten": "Rembang", "kecamatan": "pancur", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.7332, "lng": 111.2157}, {"wilayah": "rembang - kragan", "kabupaten": "Rembang", "kecamatan": "kragan", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.6839, "lng": 111.2022}, {"wilayah": "rembang - sluke", "kabupaten": "Rembang", "kecamatan": "sluke", "cluster": "L-FSG", "ikp": 79.4, "lat": -6.7935, "lng": 111.465}, {"wilayah": "rembang - lasem", "kabupaten": "Rembang", "kecamatan": "lasem", "cluster": "L-FSG", "ikp": 80.7, "lat": -6.6538, "lng": 111.2679}, {"wilayah": "pati - sukolilo", "kabupaten": "Pati", "kecamatan": "sukolilo", "cluster": "L-FSG", "ikp": 78.3, "lat": -6.7583, "lng": 111.094}, {"wilayah": "pati - kayen", "kabupaten": "Pati", "kecamatan": "kayen", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.8533, "lng": 110.9647}, {"wilayah": "pati - tambakromo", "kabupaten": "Pati", "kecamatan": "tambakromo", "cluster": "L-FSG", "ikp": 79.2, "lat": -6.7032, "lng": 110.9826}, {"wilayah": "pati - winong", "kabupaten": "Pati", "kecamatan": "winong", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.8534, "lng": 111.0872}, {"wilayah": "pati - pucakwangi", "kabupaten": "Pati", "kecamatan": "pucakwangi", "cluster": "L-FSG", "ikp": 78.7, "lat": -6.6421, "lng": 111.0833}, {"wilayah": "pati - jaken", "kabupaten": "Pati", "kecamatan": "jaken", "cluster": "L-FSG", "ikp": 79.3, "lat": -6.8564, "lng": 111.0559}, {"wilayah": "pati - batangan", "kabupaten": "Pati", "kecamatan": "batangan", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.7103, "lng": 111.137}, {"wilayah": "pati - juwana", "kabupaten": "Pati", "kecamatan": "juwana", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.7289, "lng": 110.9511}, {"wilayah": "pati - jakenan", "kabupaten": "Pati", "kecamatan": "jakenan", "cluster": "L-FSG", "ikp": 79.7, "lat": -6.7009, "lng": 110.9698}, {"wilayah": "pati - pati", "kabupaten": "Pati", "kecamatan": "pati", "cluster": "L-FSG", "ikp": 82.4, "lat": -6.8534, "lng": 110.8838}, {"wilayah": "pati - gabus", "kabupaten": "Pati", "kecamatan": "gabus", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.704, "lng": 110.9152}, {"wilayah": "pati - margorejo", "kabupaten": "Pati", "kecamatan": "margorejo", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.857, "lng": 111.1009}, {"wilayah": "pati - gembong", "kabupaten": "Pati", "kecamatan": "gembong", "cluster": "L-FSG", "ikp": 78.9, "lat": -6.8083, "lng": 111.0729}, {"wilayah": "pati - tlogowungu", "kabupaten": "Pati", "kecamatan": "tlogowungu", "cluster": "L-FSG", "ikp": 78.3, "lat": -6.6749, "lng": 110.9878}, {"wilayah": "pati - wedarijaksa", "kabupaten": "Pati", "kecamatan": "wedarijaksa", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.8088, "lng": 111.1561}, {"wilayah": "pati - trangkil", "kabupaten": "Pati", "kecamatan": "trangkil", "cluster": "L-FSG", "ikp": 80.9, "lat": -6.7564, "lng": 111.0641}, {"wilayah": "pati - margoyoso", "kabupaten": "Pati", "kecamatan": "margoyoso", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.672, "lng": 111.027}, {"wilayah": "pati - gunungwungkal", "kabupaten": "Pati", "kecamatan": "gunungwungkal", "cluster": "L-FSG", "ikp": 78.1, "lat": -6.8583, "lng": 111.1611}, {"wilayah": "pati - cluwak", "kabupaten": "Pati", "kecamatan": "cluwak", "cluster": "L-FSG", "ikp": 77.5, "lat": -6.6882, "lng": 110.979}, {"wilayah": "pati - tayu", "kabupaten": "Pati", "kecamatan": "tayu", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.8539, "lng": 111.1703}, {"wilayah": "pati - dukuhseti", "kabupaten": "Pati", "kecamatan": "dukuhseti", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.7175, "lng": 111.1189}, {"wilayah": "kudus - kaliwungu", "kabupaten": "Kudus", "kecamatan": "kaliwungu", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.9055, "lng": 110.8616}, {"wilayah": "kudus - kota kudus", "kabupaten": "Kudus", "kecamatan": "kota kudus", "cluster": "H-FSG", "ikp": 87.5, "lat": -6.8397, "lng": 110.7273}, {"wilayah": "kudus - jati", "kabupaten": "Kudus", "kecamatan": "jati", "cluster": "L-FSG", "ikp": 83.1, "lat": -6.7304, "lng": 110.7377}, {"wilayah": "kudus - undaan", "kabupaten": "Kudus", "kecamatan": "undaan", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.8085, "lng": 110.7303}, {"wilayah": "kudus - mejobo", "kabupaten": "Kudus", "kecamatan": "mejobo", "cluster": "L-FSG", "ikp": 82.5, "lat": -6.748, "lng": 110.816}, {"wilayah": "kudus - jekulo", "kabupaten": "Kudus", "kecamatan": "jekulo", "cluster": "L-FSG", "ikp": 82.8, "lat": -6.8188, "lng": 110.7253}, {"wilayah": "kudus - bae", "kabupaten": "Kudus", "kecamatan": "bae", "cluster": "H-FSG", "ikp": 86.3, "lat": -6.8847, "lng": 110.8207}, {"wilayah": "kudus - gebog", "kabupaten": "Kudus", "kecamatan": "gebog", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.7163, "lng": 110.7196}, {"wilayah": "kudus - dawe", "kabupaten": "Kudus", "kecamatan": "dawe", "cluster": "L-FSG", "ikp": 81.4, "lat": -6.7466, "lng": 110.8953}, {"wilayah": "jepara - kedung", "kabupaten": "Jepara", "kecamatan": "kedung", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.4997, "lng": 110.6211}, {"wilayah": "jepara - pecangaan", "kabupaten": "Jepara", "kecamatan": "pecangaan", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.6604, "lng": 110.5601}, {"wilayah": "jepara - kalinyamatan", "kabupaten": "Jepara", "kecamatan": "kalinyamatan", "cluster": "L-FSG", "ikp": 81.8, "lat": -6.4772, "lng": 110.6396}, {"wilayah": "jepara - welahan", "kabupaten": "Jepara", "kecamatan": "welahan", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.6205, "lng": 110.7253}, {"wilayah": "jepara - mayong", "kabupaten": "Jepara", "kecamatan": "mayong", "cluster": "L-FSG", "ikp": 80.7, "lat": -6.5371, "lng": 110.5736}, {"wilayah": "jepara - nalumsari", "kabupaten": "Jepara", "kecamatan": "nalumsari", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.6751, "lng": 110.7544}, {"wilayah": "jepara - batealit", "kabupaten": "Jepara", "kecamatan": "batealit", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.6733, "lng": 110.5636}, {"wilayah": "jepara - tahunan", "kabupaten": "Jepara", "kecamatan": "tahunan", "cluster": "L-FSG", "ikp": 81.9, "lat": -6.4927, "lng": 110.708}, {"wilayah": "jepara - jepara", "kabupaten": "Jepara", "kecamatan": "jepara", "cluster": "L-FSG", "ikp": 83.2, "lat": -6.6971, "lng": 110.594}, {"wilayah": "jepara - mlonggo", "kabupaten": "Jepara", "kecamatan": "mlonggo", "cluster": "L-FSG", "ikp": 82.4, "lat": -6.6912, "lng": 110.7046}, {"wilayah": "jepara - pakis aji", "kabupaten": "Jepara", "kecamatan": "pakis aji", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.678, "lng": 110.5814}, {"wilayah": "jepara - bangsri", "kabupaten": "Jepara", "kecamatan": "bangsri", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.6089, "lng": 110.5452}, {"wilayah": "jepara - kembang", "kabupaten": "Jepara", "kecamatan": "kembang", "cluster": "L-FSG", "ikp": 78.7, "lat": -6.651, "lng": 110.6466}, {"wilayah": "jepara - keling", "kabupaten": "Jepara", "kecamatan": "keling", "cluster": "L-FSG", "ikp": 77.3, "lat": -6.6722, "lng": 110.7542}, {"wilayah": "jepara - donorojo", "kabupaten": "Jepara", "kecamatan": "donorojo", "cluster": "L-FSG", "ikp": 76.8, "lat": -6.4807, "lng": 110.6843}, {"wilayah": "jepara - karimunjawa", "kabupaten": "Jepara", "kecamatan": "karimunjawa", "cluster": "L-FSG", "ikp": 74.5, "lat": -6.606, "lng": 110.7816}, {"wilayah": "demak - mranggen", "kabupaten": "Demak", "kecamatan": "mranggen", "cluster": "L-FSG", "ikp": 82.7, "lat": -6.9299, "lng": 110.6341}, {"wilayah": "demak - karangawen", "kabupaten": "Demak", "kecamatan": "karangawen", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.9487, "lng": 110.6621}, {"wilayah": "demak - guntur", "kabupaten": "Demak", "kecamatan": "guntur", "cluster": "L-FSG", "ikp": 82.5, "lat": -6.9493, "lng": 110.6063}, {"wilayah": "demak - sayung", "kabupaten": "Demak", "kecamatan": "sayung", "cluster": "L-FSG", "ikp": 82.9, "lat": -7.0101, "lng": 110.5363}, {"wilayah": "demak - karangtengah", "kabupaten": "Demak", "kecamatan": "karangtengah", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.8067, "lng": 110.6067}, {"wilayah": "demak - bonang", "kabupaten": "Demak", "kecamatan": "bonang", "cluster": "L-FSG", "ikp": 81.8, "lat": -6.849, "lng": 110.536}, {"wilayah": "demak - demak", "kabupaten": "Demak", "kecamatan": "demak", "cluster": "L-FSG", "ikp": 83.4, "lat": -6.9588, "lng": 110.6636}, {"wilayah": "demak - wonosalam", "kabupaten": "Demak", "kecamatan": "wonosalam", "cluster": "L-FSG", "ikp": 82.6, "lat": -6.9842, "lng": 110.7803}, {"wilayah": "demak - dempet", "kabupaten": "Demak", "kecamatan": "dempet", "cluster": "L-FSG", "ikp": 81.9, "lat": -6.8999, "lng": 110.537}, {"wilayah": "demak - gajah", "kabupaten": "Demak", "kecamatan": "gajah", "cluster": "L-FSG", "ikp": 81.5, "lat": -6.978, "lng": 110.7791}, {"wilayah": "demak - karanganyar", "kabupaten": "Demak", "kecamatan": "karanganyar", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.8007, "lng": 110.7864}, {"wilayah": "demak - mijen", "kabupaten": "Demak", "kecamatan": "mijen", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.9213, "lng": 110.5851}, {"wilayah": "demak - wedung", "kabupaten": "Demak", "kecamatan": "wedung", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.8247, "lng": 110.7459}, {"wilayah": "demak - kebonagung", "kabupaten": "Demak", "kecamatan": "kebonagung", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.9266, "lng": 110.557}, {"wilayah": "semarang - getasan", "kabupaten": "Semarang", "kecamatan": "getasan", "cluster": "L-FSG", "ikp": 80.5, "lat": -7.124, "lng": 110.5543}, {"wilayah": "semarang - tengaran", "kabupaten": "Semarang", "kecamatan": "tengaran", "cluster": "L-FSG", "ikp": 82.1, "lat": -7.06, "lng": 110.5197}, {"wilayah": "semarang - susukan", "kabupaten": "Semarang", "kecamatan": "susukan", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.2196, "lng": 110.3769}, {"wilayah": "semarang - kaliwungu", "kabupaten": "Semarang", "kecamatan": "kaliwungu", "cluster": "L-FSG", "ikp": 81.8, "lat": -7.184, "lng": 110.3463}, {"wilayah": "semarang - suruh", "kabupaten": "Semarang", "kecamatan": "suruh", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.2556, "lng": 110.4429}, {"wilayah": "semarang - pabelan", "kabupaten": "Semarang", "kecamatan": "pabelan", "cluster": "L-FSG", "ikp": 82.3, "lat": -7.2258, "lng": 110.4318}, {"wilayah": "semarang - tuntang", "kabupaten": "Semarang", "kecamatan": "tuntang", "cluster": "L-FSG", "ikp": 82.7, "lat": -7.2455, "lng": 110.3278}, {"wilayah": "semarang - banyubiru", "kabupaten": "Semarang", "kecamatan": "banyubiru", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.1558, "lng": 110.3207}, {"wilayah": "semarang - jambu", "kabupaten": "Semarang", "kecamatan": "jambu", "cluster": "L-FSG", "ikp": 81.9, "lat": -7.0868, "lng": 110.4726}, {"wilayah": "semarang - sumowono", "kabupaten": "Semarang", "kecamatan": "sumowono", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.1518, "lng": 110.5549}, {"wilayah": "semarang - ambarawa", "kabupaten": "Semarang", "kecamatan": "ambarawa", "cluster": "H-FSG", "ikp": 86.8, "lat": -7.0846, "lng": 110.4772}, {"wilayah": "semarang - bawen", "kabupaten": "Semarang", "kecamatan": "bawen", "cluster": "L-FSG", "ikp": 83.5, "lat": -7.1619, "lng": 110.4599}, {"wilayah": "semarang - bringin", "kabupaten": "Semarang", "kecamatan": "bringin", "cluster": "L-FSG", "ikp": 81.4, "lat": -7.1736, "lng": 110.3607}, {"wilayah": "semarang - bancak", "kabupaten": "Semarang", "kecamatan": "bancak", "cluster": "L-FSG", "ikp": 80.7, "lat": -7.2504, "lng": 110.5224}, {"wilayah": "semarang - pringapus", "kabupaten": "Semarang", "kecamatan": "pringapus", "cluster": "L-FSG", "ikp": 82.8, "lat": -7.2333, "lng": 110.4952}, {"wilayah": "semarang - bergas", "kabupaten": "Semarang", "kecamatan": "bergas", "cluster": "H-FSG", "ikp": 86.2, "lat": -7.2087, "lng": 110.4054}, {"wilayah": "semarang - ungaran barat", "kabupaten": "Semarang", "kecamatan": "ungaran barat", "cluster": "H-FSG", "ikp": 87.4, "lat": -7.1595, "lng": 110.4061}, {"wilayah": "semarang - ungaran timur", "kabupaten": "Semarang", "kecamatan": "ungaran timur", "cluster": "H-FSG", "ikp": 87.1, "lat": -7.1122, "lng": 110.3097}, {"wilayah": "temanggung - parakan", "kabupaten": "Temanggung", "kecamatan": "parakan", "cluster": "L-FSG", "ikp": 81.3, "lat": -7.2853, "lng": 110.2859}, {"wilayah": "temanggung - kledung", "kabupaten": "Temanggung", "kecamatan": "kledung", "cluster": "L-FSG", "ikp": 78.5, "lat": -7.2437, "lng": 110.0932}, {"wilayah": "temanggung - bansari", "kabupaten": "Temanggung", "kecamatan": "bansari", "cluster": "L-FSG", "ikp": 79.2, "lat": -7.2024, "lng": 110.0871}, {"wilayah": "temanggung - bulu", "kabupaten": "Temanggung", "kecamatan": "bulu", "cluster": "L-FSG", "ikp": 78.8, "lat": -7.4006, "lng": 110.0685}, {"wilayah": "temanggung - temanggung", "kabupaten": "Temanggung", "kecamatan": "temanggung", "cluster": "L-FSG", "ikp": 82.7, "lat": -7.4071, "lng": 110.2542}, {"wilayah": "temanggung - tlogomulyo", "kabupaten": "Temanggung", "kecamatan": "tlogomulyo", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.2834, "lng": 110.2007}, {"wilayah": "temanggung - tembarak", "kabupaten": "Temanggung", "kecamatan": "tembarak", "cluster": "L-FSG", "ikp": 79.8, "lat": -7.406, "lng": 110.1053}, {"wilayah": "temanggung - selopampang", "kabupaten": "Temanggung", "kecamatan": "selopampang", "cluster": "L-FSG", "ikp": 78.4, "lat": -7.272, "lng": 110.3006}, {"wilayah": "temanggung - kranggan", "kabupaten": "Temanggung", "kecamatan": "kranggan", "cluster": "L-FSG", "ikp": 80.3, "lat": -7.3889, "lng": 110.036}, {"wilayah": "temanggung - pringsurat", "kabupaten": "Temanggung", "kecamatan": "pringsurat", "cluster": "L-FSG", "ikp": 80.8, "lat": -7.232, "lng": 110.1744}, {"wilayah": "temanggung - kaloran", "kabupaten": "Temanggung", "kecamatan": "kaloran", "cluster": "L-FSG", "ikp": 79.7, "lat": -7.2343, "lng": 110.1085}, {"wilayah": "temanggung - kandangan", "kabupaten": "Temanggung", "kecamatan": "kandangan", "cluster": "L-FSG", "ikp": 79.1, "lat": -7.3348, "lng": 110.2853}, {"wilayah": "temanggung - kedu", "kabupaten": "Temanggung", "kecamatan": "kedu", "cluster": "L-FSG", "ikp": 81.5, "lat": -7.383, "lng": 110.0524}, {"wilayah": "temanggung - ngadirejo", "kabupaten": "Temanggung", "kecamatan": "ngadirejo", "cluster": "L-FSG", "ikp": 80.2, "lat": -7.3131, "lng": 110.2245}, {"wilayah": "temanggung - jumo", "kabupaten": "Temanggung", "kecamatan": "jumo", "cluster": "L-FSG", "ikp": 79.4, "lat": -7.2953, "lng": 110.0672}, {"wilayah": "temanggung - gemawang", "kabupaten": "Temanggung", "kecamatan": "gemawang", "cluster": "L-FSG", "ikp": 78.7, "lat": -7.2533, "lng": 110.2774}, {"wilayah": "temanggung - candiroto", "kabupaten": "Temanggung", "kecamatan": "candiroto", "cluster": "L-FSG", "ikp": 78.3, "lat": -7.385, "lng": 110.2928}, {"wilayah": "temanggung - bejen", "kabupaten": "Temanggung", "kecamatan": "bejen", "cluster": "L-FSG", "ikp": 77.5, "lat": -7.2045, "lng": 110.0377}, {"wilayah": "temanggung - tretep", "kabupaten": "Temanggung", "kecamatan": "tretep", "cluster": "L-FSG", "ikp": 76.8, "lat": -7.3319, "lng": 110.0937}, {"wilayah": "temanggung - wonoboyo", "kabupaten": "Temanggung", "kecamatan": "wonoboyo", "cluster": "L-FSG", "ikp": 77.2, "lat": -7.2715, "lng": 110.1981}, {"wilayah": "kendal - plantungan", "kabupaten": "Kendal", "kecamatan": "plantungan", "cluster": "L-FSG", "ikp": 78.3, "lat": -6.8094, "lng": 110.2051}, {"wilayah": "kendal - sukorejo", "kabupaten": "Kendal", "kecamatan": "sukorejo", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.8162, "lng": 110.2369}, {"wilayah": "kendal - pageruyung", "kabupaten": "Kendal", "kecamatan": "pageruyung", "cluster": "L-FSG", "ikp": 78.8, "lat": -6.8646, "lng": 110.3356}, {"wilayah": "kendal - patean", "kabupaten": "Kendal", "kecamatan": "patean", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.9204, "lng": 110.0904}, {"wilayah": "kendal - singorojo", "kabupaten": "Kendal", "kecamatan": "singorojo", "cluster": "L-FSG", "ikp": 79.1, "lat": -6.8116, "lng": 110.2808}, {"wilayah": "kendal - limbangan", "kabupaten": "Kendal", "kecamatan": "limbangan", "cluster": "L-FSG", "ikp": 79.7, "lat": -7.0104, "lng": 110.143}, {"wilayah": "kendal - boja", "kabupaten": "Kendal", "kecamatan": "boja", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.9818, "lng": 110.2291}, {"wilayah": "kendal - kaliwungu", "kabupaten": "Kendal", "kecamatan": "kaliwungu", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.0008, "lng": 110.2352}, {"wilayah": "kendal - kaliwungu selatan", "kabupaten": "Kendal", "kecamatan": "kaliwungu selatan", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.8672, "lng": 110.2554}, {"wilayah": "kendal - brangsong", "kabupaten": "Kendal", "kecamatan": "brangsong", "cluster": "L-FSG", "ikp": 82.7, "lat": -6.9725, "lng": 110.2488}, {"wilayah": "kendal - pegandon", "kabupaten": "Kendal", "kecamatan": "pegandon", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.9036, "lng": 110.1266}, {"wilayah": "kendal - ngampel", "kabupaten": "Kendal", "kecamatan": "ngampel", "cluster": "L-FSG", "ikp": 82.0, "lat": -6.9001, "lng": 110.1884}, {"wilayah": "kendal - gemuh", "kabupaten": "Kendal", "kecamatan": "gemuh", "cluster": "L-FSG", "ikp": 81.8, "lat": -6.9228, "lng": 110.3223}, {"wilayah": "kendal - ringinarum", "kabupaten": "Kendal", "kecamatan": "ringinarum", "cluster": "L-FSG", "ikp": 81.5, "lat": -6.8768, "lng": 110.0713}, {"wilayah": "kendal - weleri", "kabupaten": "Kendal", "kecamatan": "weleri", "cluster": "L-FSG", "ikp": 82.4, "lat": -6.9417, "lng": 110.2077}, {"wilayah": "kendal - rowosari", "kabupaten": "Kendal", "kecamatan": "rowosari", "cluster": "L-FSG", "ikp": 81.2, "lat": -7.0259, "lng": 110.1316}, {"wilayah": "kendal - kangkung", "kabupaten": "Kendal", "kecamatan": "kangkung", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.8537, "lng": 110.2455}, {"wilayah": "kendal - cepiring", "kabupaten": "Kendal", "kecamatan": "cepiring", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.8718, "lng": 110.2052}, {"wilayah": "kendal - patebon", "kabupaten": "Kendal", "kecamatan": "patebon", "cluster": "L-FSG", "ikp": 82.5, "lat": -6.8525, "lng": 110.2827}, {"wilayah": "kendal - kendal", "kabupaten": "Kendal", "kecamatan": "kendal", "cluster": "L-FSG", "ikp": 83.2, "lat": -6.8533, "lng": 110.1316}, {"wilayah": "batang - wonotunggal", "kabupaten": "Batang", "kecamatan": "wonotunggal", "cluster": "L-FSG", "ikp": 78.4, "lat": -6.8253, "lng": 109.6998}, {"wilayah": "batang - bandar", "kabupaten": "Batang", "kecamatan": "bandar", "cluster": "L-FSG", "ikp": 78.9, "lat": -6.8583, "lng": 109.5905}, {"wilayah": "batang - blado", "kabupaten": "Batang", "kecamatan": "blado", "cluster": "L-FSG", "ikp": 77.5, "lat": -6.9193, "lng": 109.8175}, {"wilayah": "batang - reban", "kabupaten": "Batang", "kecamatan": "reban", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.8076, "lng": 109.7718}, {"wilayah": "batang - bawang", "kabupaten": "Batang", "kecamatan": "bawang", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.892, "lng": 109.6742}, {"wilayah": "batang - tersono", "kabupaten": "Batang", "kecamatan": "tersono", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.9704, "lng": 109.681}, {"wilayah": "batang - gringsing", "kabupaten": "Batang", "kecamatan": "gringsing", "cluster": "L-FSG", "ikp": 80.7, "lat": -6.9452, "lng": 109.7264}, {"wilayah": "batang - limpung", "kabupaten": "Batang", "kecamatan": "limpung", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.8204, "lng": 109.7954}, {"wilayah": "batang - subah", "kabupaten": "Batang", "kecamatan": "subah", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.8817, "lng": 109.7887}, {"wilayah": "batang - pecalungan", "kabupaten": "Batang", "kecamatan": "pecalungan", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.8084, "lng": 109.6639}, {"wilayah": "batang - tulis", "kabupaten": "Batang", "kecamatan": "tulis", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.8518, "lng": 109.6436}, {"wilayah": "batang - kandeman", "kabupaten": "Batang", "kecamatan": "kandeman", "cluster": "L-FSG", "ikp": 81.4, "lat": -6.7905, "lng": 109.8389}, {"wilayah": "batang - batang", "kabupaten": "Batang", "kecamatan": "batang", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.9913, "lng": 109.7572}, {"wilayah": "batang - warungasem", "kabupaten": "Batang", "kecamatan": "warungasem", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.8603, "lng": 109.7932}, {"wilayah": "batang - banyuputih", "kabupaten": "Batang", "kecamatan": "banyuputih", "cluster": "L-FSG", "ikp": 80.9, "lat": -6.852, "lng": 109.6033}, {"wilayah": "pekalongan - kandangserang", "kabupaten": "Pekalongan", "kecamatan": "kandangserang", "cluster": "L-FSG", "ikp": 77.3, "lat": -6.8617, "lng": 109.6467}, {"wilayah": "pekalongan - paninggaran", "kabupaten": "Pekalongan", "kecamatan": "paninggaran", "cluster": "L-FSG", "ikp": 76.8, "lat": -6.8164, "lng": 109.7478}, {"wilayah": "pekalongan - lebakbarang", "kabupaten": "Pekalongan", "kecamatan": "lebakbarang", "cluster": "L-FSG", "ikp": 75.5, "lat": -6.8681, "lng": 109.5841}, {"wilayah": "pekalongan - petungkriyono", "kabupaten": "Pekalongan", "kecamatan": "petungkriyono", "cluster": "L-FSG", "ikp": 74.2, "lat": -6.9958, "lng": 109.562}, {"wilayah": "pekalongan - talun", "kabupaten": "Pekalongan", "kecamatan": "talun", "cluster": "L-FSG", "ikp": 78.5, "lat": -6.9816, "lng": 109.5113}, {"wilayah": "pekalongan - doro", "kabupaten": "Pekalongan", "kecamatan": "doro", "cluster": "L-FSG", "ikp": 79.2, "lat": -6.789, "lng": 109.6592}, {"wilayah": "pekalongan - karanganyar", "kabupaten": "Pekalongan", "kecamatan": "karanganyar", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.8385, "lng": 109.572}, {"wilayah": "pekalongan - kajen", "kabupaten": "Pekalongan", "kecamatan": "kajen", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.8739, "lng": 109.4976}, {"wilayah": "pekalongan - kesesi", "kabupaten": "Pekalongan", "kecamatan": "kesesi", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.8409, "lng": 109.6625}, {"wilayah": "pekalongan - sragi", "kabupaten": "Pekalongan", "kecamatan": "sragi", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.9613, "lng": 109.5279}, {"wilayah": "pekalongan - siwalan", "kabupaten": "Pekalongan", "kecamatan": "siwalan", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.8209, "lng": 109.712}, {"wilayah": "pekalongan - buaran", "kabupaten": "Pekalongan", "kecamatan": "buaran", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.9131, "lng": 109.4929}, {"wilayah": "pekalongan - tirto", "kabupaten": "Pekalongan", "kecamatan": "tirto", "cluster": "L-FSG", "ikp": 82.5, "lat": -7.0075, "lng": 109.741}, {"wilayah": "pekalongan - wiradesa", "kabupaten": "Pekalongan", "kecamatan": "wiradesa", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.7934, "lng": 109.5437}, {"wilayah": "pekalongan - wonokerto", "kabupaten": "Pekalongan", "kecamatan": "wonokerto", "cluster": "L-FSG", "ikp": 81.9, "lat": -6.8492, "lng": 109.6276}, {"wilayah": "pekalongan - bojong", "kabupaten": "Pekalongan", "kecamatan": "bojong", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.916, "lng": 109.5881}, {"wilayah": "pekalongan - wonopringgo", "kabupaten": "Pekalongan", "kecamatan": "wonopringgo", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.8125, "lng": 109.5968}, {"wilayah": "pekalongan - kedungwuni", "kabupaten": "Pekalongan", "kecamatan": "kedungwuni", "cluster": "L-FSG", "ikp": 82.0, "lat": -6.8135, "lng": 109.5653}, {"wilayah": "pekalongan - karangdadap", "kabupaten": "Pekalongan", "kecamatan": "karangdadap", "cluster": "L-FSG", "ikp": 81.5, "lat": -6.911, "lng": 109.6637}, {"wilayah": "pemalang - moga", "kabupaten": "Pemalang", "kecamatan": "moga", "cluster": "L-FSG", "ikp": 77.5, "lat": -6.8474, "lng": 109.2352}, {"wilayah": "pemalang - warungpring", "kabupaten": "Pemalang", "kecamatan": "warungpring", "cluster": "L-FSG", "ikp": 77.8, "lat": -6.8118, "lng": 109.3988}, {"wilayah": "pemalang - pulosari", "kabupaten": "Pemalang", "kecamatan": "pulosari", "cluster": "L-FSG", "ikp": 76.3, "lat": -6.823, "lng": 109.3422}, {"wilayah": "pemalang - belik", "kabupaten": "Pemalang", "kecamatan": "belik", "cluster": "L-FSG", "ikp": 76.8, "lat": -6.9397, "lng": 109.2844}, {"wilayah": "pemalang - watukumpul", "kabupaten": "Pemalang", "kecamatan": "watukumpul", "cluster": "L-FSG", "ikp": 75.4, "lat": -6.8921, "lng": 109.3573}, {"wilayah": "pemalang - bodeh", "kabupaten": "Pemalang", "kecamatan": "bodeh", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.9749, "lng": 109.4862}, {"wilayah": "pemalang - bantarbolang", "kabupaten": "Pemalang", "kecamatan": "bantarbolang", "cluster": "L-FSG", "ikp": 79.5, "lat": -7.0067, "lng": 109.2502}, {"wilayah": "pemalang - randudongkal", "kabupaten": "Pemalang", "kecamatan": "randudongkal", "cluster": "L-FSG", "ikp": 79.1, "lat": -6.9664, "lng": 109.2713}, {"wilayah": "pemalang - pemalang", "kabupaten": "Pemalang", "kecamatan": "pemalang", "cluster": "L-FSG", "ikp": 81.3, "lat": -6.9039, "lng": 109.4993}, {"wilayah": "pemalang - taman", "kabupaten": "Pemalang", "kecamatan": "taman", "cluster": "L-FSG", "ikp": 81.7, "lat": -6.7916, "lng": 109.4552}, {"wilayah": "pemalang - petarukan", "kabupaten": "Pemalang", "kecamatan": "petarukan", "cluster": "L-FSG", "ikp": 81.5, "lat": -6.7765, "lng": 109.2617}, {"wilayah": "pemalang - ampelgading", "kabupaten": "Pemalang", "kecamatan": "ampelgading", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.9494, "lng": 109.2641}, {"wilayah": "pemalang - comal", "kabupaten": "Pemalang", "kecamatan": "comal", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.887, "lng": 109.2816}, {"wilayah": "pemalang - ulujami", "kabupaten": "Pemalang", "kecamatan": "ulujami", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.8361, "lng": 109.2823}, {"wilayah": "tegal - margasari", "kabupaten": "Tegal", "kecamatan": "margasari", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.8974, "lng": 109.0977}, {"wilayah": "tegal - bumijawa", "kabupaten": "Tegal", "kecamatan": "bumijawa", "cluster": "L-FSG", "ikp": 77.3, "lat": -6.7867, "lng": 109.0044}, {"wilayah": "tegal - bojong", "kabupaten": "Tegal", "kecamatan": "bojong", "cluster": "L-FSG", "ikp": 78.8, "lat": -6.7801, "lng": 109.0963}, {"wilayah": "tegal - balapulang", "kabupaten": "Tegal", "kecamatan": "balapulang", "cluster": "L-FSG", "ikp": 79.2, "lat": -6.8201, "lng": 109.2452}, {"wilayah": "tegal - pagerbarang", "kabupaten": "Tegal", "kecamatan": "pagerbarang", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.8476, "lng": 108.9995}, {"wilayah": "tegal - lebaksiu", "kabupaten": "Tegal", "kecamatan": "lebaksiu", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.9797, "lng": 109.2763}, {"wilayah": "tegal - jatinegara", "kabupaten": "Tegal", "kecamatan": "jatinegara", "cluster": "L-FSG", "ikp": 78.7, "lat": -6.8574, "lng": 109.256}, {"wilayah": "tegal - kedungbanteng", "kabupaten": "Tegal", "kecamatan": "kedungbanteng", "cluster": "L-FSG", "ikp": 79.4, "lat": -6.9112, "lng": 109.1649}, {"wilayah": "tegal - pangkah", "kabupaten": "Tegal", "kecamatan": "pangkah", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.9707, "lng": 109.1968}, {"wilayah": "tegal - slawi", "kabupaten": "Tegal", "kecamatan": "slawi", "cluster": "L-FSG", "ikp": 82.3, "lat": -6.9535, "lng": 109.0541}, {"wilayah": "tegal - adiwerna", "kabupaten": "Tegal", "kecamatan": "adiwerna", "cluster": "L-FSG", "ikp": 82.7, "lat": -6.8394, "lng": 109.0223}, {"wilayah": "tegal - dukuhturi", "kabupaten": "Tegal", "kecamatan": "dukuhturi", "cluster": "L-FSG", "ikp": 82.1, "lat": -6.8598, "lng": 109.2734}, {"wilayah": "tegal - talang", "kabupaten": "Tegal", "kecamatan": "talang", "cluster": "L-FSG", "ikp": 82.5, "lat": -6.8964, "lng": 109.1962}, {"wilayah": "tegal - tarub", "kabupaten": "Tegal", "kecamatan": "tarub", "cluster": "L-FSG", "ikp": 81.8, "lat": -6.7816, "lng": 109.0081}, {"wilayah": "tegal - kramat", "kabupaten": "Tegal", "kecamatan": "kramat", "cluster": "L-FSG", "ikp": 82.0, "lat": -6.8767, "lng": 109.1017}, {"wilayah": "tegal - suradadi", "kabupaten": "Tegal", "kecamatan": "suradadi", "cluster": "L-FSG", "ikp": 81.5, "lat": -6.8066, "lng": 109.1787}, {"wilayah": "tegal - warurejo", "kabupaten": "Tegal", "kecamatan": "warurejo", "cluster": "L-FSG", "ikp": 81.2, "lat": -6.9084, "lng": 109.0178}, {"wilayah": "tegal - warureja", "kabupaten": "Tegal", "kecamatan": "warureja", "cluster": "L-FSG", "ikp": 80.8, "lat": -6.7872, "lng": 109.1728}, {"wilayah": "brebes - brebes", "kabupaten": "Brebes", "kecamatan": "brebes", "cluster": "L-FSG", "ikp": 80.3, "lat": -6.7592, "lng": 108.9443}, {"wilayah": "brebes - wanasari", "kabupaten": "Brebes", "kecamatan": "wanasari", "cluster": "L-FSG", "ikp": 80.7, "lat": -6.7946, "lng": 109.033}, {"wilayah": "brebes - bulakamba", "kabupaten": "Brebes", "kecamatan": "bulakamba", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.8785, "lng": 109.0715}, {"wilayah": "brebes - losari", "kabupaten": "Brebes", "kecamatan": "losari", "cluster": "L-FSG", "ikp": 79.8, "lat": -6.7755, "lng": 108.9434}, {"wilayah": "brebes - tanjung", "kabupaten": "Brebes", "kecamatan": "tanjung", "cluster": "L-FSG", "ikp": 79.5, "lat": -6.9589, "lng": 108.927}, {"wilayah": "brebes - kersana", "kabupaten": "Brebes", "kecamatan": "kersana", "cluster": "L-FSG", "ikp": 80.1, "lat": -6.8911, "lng": 108.8641}, {"wilayah": "brebes - ketanggungan", "kabupaten": "Brebes", "kecamatan": "ketanggungan", "cluster": "L-FSG", "ikp": 79.7, "lat": -6.816, "lng": 108.9255}, {"wilayah": "brebes - banjarharjo", "kabupaten": "Brebes", "kecamatan": "banjarharjo", "cluster": "L-FSG", "ikp": 79.3, "lat": -6.892, "lng": 108.8012}, {"wilayah": "brebes - larangan", "kabupaten": "Brebes", "kecamatan": "larangan", "cluster": "L-FSG", "ikp": 79.9, "lat": -6.8832, "lng": 108.8837}, {"wilayah": "brebes - songgom", "kabupaten": "Brebes", "kecamatan": "songgom", "cluster": "L-FSG", "ikp": 80.2, "lat": -6.9379, "lng": 108.9704}, {"wilayah": "brebes - jatibarang", "kabupaten": "Brebes", "kecamatan": "jatibarang", "cluster": "L-FSG", "ikp": 80.5, "lat": -6.9278, "lng": 108.9473}, {"wilayah": "brebes - bantarkawung", "kabupaten": "Brebes", "kecamatan": "bantarkawung", "cluster": "L-FSG", "ikp": 77.5, "lat": -6.9602, "lng": 108.781}, {"wilayah": "brebes - bumiayu", "kabupaten": "Brebes", "kecamatan": "bumiayu", "cluster": "L-FSG", "ikp": 79.2, "lat": -6.9118, "lng": 108.9564}, {"wilayah": "brebes - paguyangan", "kabupaten": "Brebes", "kecamatan": "paguyangan", "cluster": "L-FSG", "ikp": 78.5, "lat": -6.902, "lng": 108.9864}, {"wilayah": "brebes - sirampog", "kabupaten": "Brebes", "kecamatan": "sirampog", "cluster": "L-FSG", "ikp": 77.8, "lat": -6.8221, "lng": 108.7871}, {"wilayah": "brebes - tonjong", "kabupaten": "Brebes", "kecamatan": "tonjong", "cluster": "L-FSG", "ikp": 78.2, "lat": -6.9427, "lng": 108.896}, {"wilayah": "brebes - salem", "kabupaten": "Brebes", "kecamatan": "salem", "cluster": "L-FSG", "ikp": 76.4, "lat": -6.8441, "lng": 108.8144}, {"wilayah": "kota semarang - semarang tengah", "kabupaten": "Kota Semarang", "kecamatan": "semarang tengah", "cluster": "H-FSG", "ikp": 94.2, "lat": -6.885, "lng": 110.2977}, {"wilayah": "kota semarang - semarang utara", "kabupaten": "Kota Semarang", "kecamatan": "semarang utara", "cluster": "H-FSG", "ikp": 91.5, "lat": -6.8588, "lng": 110.278}, {"wilayah": "kota semarang - semarang timur", "kabupaten": "Kota Semarang", "kecamatan": "semarang timur", "cluster": "H-FSG", "ikp": 92.3, "lat": -6.8502, "lng": 110.3373}, {"wilayah": "kota semarang - semarang selatan", "kabupaten": "Kota Semarang", "kecamatan": "semarang selatan", "cluster": "H-FSG", "ikp": 93.1, "lat": -6.9518, "lng": 110.4081}, {"wilayah": "kota semarang - semarang barat", "kabupaten": "Kota Semarang", "kecamatan": "semarang barat", "cluster": "H-FSG", "ikp": 92.7, "lat": -6.8892, "lng": 110.3418}, {"wilayah": "kota semarang - candisari", "kabupaten": "Kota Semarang", "kecamatan": "candisari", "cluster": "H-FSG", "ikp": 91.8, "lat": -6.9335, "lng": 110.3705}, {"wilayah": "kota semarang - gajahmungkur", "kabupaten": "Kota Semarang", "kecamatan": "gajahmungkur", "cluster": "H-FSG", "ikp": 92.5, "lat": -7.0872, "lng": 110.5484}, {"wilayah": "kota semarang - gayamsari", "kabupaten": "Kota Semarang", "kecamatan": "gayamsari", "cluster": "H-FSG", "ikp": 91.3, "lat": -7.0065, "lng": 110.3965}, {"wilayah": "kota semarang - genuk", "kabupaten": "Kota Semarang", "kecamatan": "genuk", "cluster": "H-FSG", "ikp": 90.8, "lat": -6.9721, "lng": 110.2707}, {"wilayah": "kota semarang - pedurungan", "kabupaten": "Kota Semarang", "kecamatan": "pedurungan", "cluster": "H-FSG", "ikp": 91.7, "lat": -6.8844, "lng": 110.3112}, {"wilayah": "kota semarang - tembalang", "kabupaten": "Kota Semarang", "kecamatan": "tembalang", "cluster": "H-FSG", "ikp": 91.2, "lat": -6.9233, "lng": 110.3647}, {"wilayah": "kota semarang - banyumanik", "kabupaten": "Kota Semarang", "kecamatan": "banyumanik", "cluster": "H-FSG", "ikp": 92.1, "lat": -6.9607, "lng": 110.3151}, {"wilayah": "kota semarang - gunungpati", "kabupaten": "Kota Semarang", "kecamatan": "gunungpati", "cluster": "L-FSG", "ikp": 86.3, "lat": -7.0244, "lng": 110.4462}, {"wilayah": "kota semarang - ngaliyan", "kabupaten": "Kota Semarang", "kecamatan": "ngaliyan", "cluster": "H-FSG", "ikp": 90.5, "lat": -6.9615, "lng": 110.3431}, {"wilayah": "kota semarang - mijen", "kabupaten": "Kota Semarang", "kecamatan": "mijen", "cluster": "L-FSG", "ikp": 85.7, "lat": -7.084, "lng": 110.4278}, {"wilayah": "kota semarang - tugu", "kabupaten": "Kota Semarang", "kecamatan": "tugu", "cluster": "L-FSG", "ikp": 86.1, "lat": -6.9378, "lng": 110.3984}, {"wilayah": "kota surakarta - laweyan", "kabupaten": "Kota Surakarta", "kecamatan": "laweyan", "cluster": "H-FSG", "ikp": 93.5, "lat": -7.5767, "lng": 110.8596}, {"wilayah": "kota surakarta - serengan", "kabupaten": "Kota Surakarta", "kecamatan": "serengan", "cluster": "H-FSG", "ikp": 92.8, "lat": -7.4885, "lng": 110.9749}, {"wilayah": "kota surakarta - pasar kliwon", "kabupaten": "Kota Surakarta", "kecamatan": "pasar kliwon", "cluster": "H-FSG", "ikp": 91.7, "lat": -7.4541, "lng": 110.7655}, {"wilayah": "kota surakarta - jebres", "kabupaten": "Kota Surakarta", "kecamatan": "jebres", "cluster": "H-FSG", "ikp": 92.3, "lat": -7.6163, "lng": 110.9035}, {"wilayah": "kota surakarta - banjarsari", "kabupaten": "Kota Surakarta", "kecamatan": "banjarsari", "cluster": "H-FSG", "ikp": 93.1, "lat": -7.6468, "lng": 110.732}, {"wilayah": "kota salatiga - sidorejo", "kabupaten": "Kota Salatiga", "kecamatan": "sidorejo", "cluster": "H-FSG", "ikp": 91.5, "lat": -7.2697, "lng": 110.496}, {"wilayah": "kota salatiga - tingkir", "kabupaten": "Kota Salatiga", "kecamatan": "tingkir", "cluster": "H-FSG", "ikp": 91.2, "lat": -7.2955, "lng": 110.4777}, {"wilayah": "kota salatiga - argomulyo", "kabupaten": "Kota Salatiga", "kecamatan": "argomulyo", "cluster": "H-FSG", "ikp": 90.8, "lat": -7.3802, "lng": 110.6324}, {"wilayah": "kota salatiga - sidomukti", "kabupaten": "Kota Salatiga", "kecamatan": "sidomukti", "cluster": "H-FSG", "ikp": 91.7, "lat": -7.4408, "lng": 110.3853}, {"wilayah": "kota magelang - magelang utara", "kabupaten": "Kota Magelang", "kecamatan": "magelang utara", "cluster": "H-FSG", "ikp": 91.3, "lat": -7.5331, "lng": 110.2921}, {"wilayah": "kota magelang - magelang tengah", "kabupaten": "Kota Magelang", "kecamatan": "magelang tengah", "cluster": "H-FSG", "ikp": 92.1, "lat": -7.4505, "lng": 110.0788}, {"wilayah": "kota magelang - magelang selatan", "kabupaten": "Kota Magelang", "kecamatan": "magelang selatan", "cluster": "H-FSG", "ikp": 91.8, "lat": -7.3783, "lng": 110.2438}, {"wilayah": "kota pekalongan - pekalongan barat", "kabupaten": "Kota Pekalongan", "kecamatan": "pekalongan barat", "cluster": "H-FSG", "ikp": 90.5, "lat": -6.9033, "lng": 109.8175}, {"wilayah": "kota pekalongan - pekalongan timur", "kabupaten": "Kota Pekalongan", "kecamatan": "pekalongan timur", "cluster": "H-FSG", "ikp": 90.8, "lat": -6.8361, "lng": 109.8133}, {"wilayah": "kota pekalongan - pekalongan utara", "kabupaten": "Kota Pekalongan", "kecamatan": "pekalongan utara", "cluster": "H-FSG", "ikp": 90.2, "lat": -6.934, "lng": 109.7572}, {"wilayah": "kota pekalongan - pekalongan selatan", "kabupaten": "Kota Pekalongan", "kecamatan": "pekalongan selatan", "cluster": "H-FSG", "ikp": 90.7, "lat": -6.8593, "lng": 109.8194}, {"wilayah": "kota tegal - tegal barat", "kabupaten": "Kota Tegal", "kecamatan": "tegal barat", "cluster": "H-FSG", "ikp": 90.1, "lat": -6.9561, "lng": 109.2122}, {"wilayah": "kota tegal - tegal timur", "kabupaten": "Kota Tegal", "kecamatan": "tegal timur", "cluster": "H-FSG", "ikp": 90.5, "lat": -6.8536, "lng": 109.1717}, {"wilayah": "kota tegal - tegal selatan", "kabupaten": "Kota Tegal", "kecamatan": "tegal selatan", "cluster": "H-FSG", "ikp": 89.8, "lat": -6.8118, "lng": 109.1841}, {"wilayah": "kota tegal - margadana", "kabupaten": "Kota Tegal", "kecamatan": "margadana", "cluster": "H-FSG", "ikp": 89.5, "lat": -6.8172, "lng": 109.1471}];
+
+const map = L.map('map', {
+  center: [-7.15, 110.3],
+  zoom: 8,
+  zoomControl: true,
+})
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains:'abcd',maxZoom:19
+}).addTo(map)
+
+const hfsgIcon = L.divIcon({className:'',html:'<div style="width:10px;height:10px;border-radius:50%;background:#27ae60;border:2px solid #1a7a40;opacity:0.85"></div>',iconSize:[10,10],iconAnchor:[5,5]})
+const lfsgIcon = L.divIcon({className:'',html:'<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;border:2px solid #a93226;opacity:0.75"></div>',iconSize:[8,8],iconAnchor:[4,4]})
+
+const markers = L.markerClusterGroup ? L.markerClusterGroup({chunkedLoading:true}) : null
+
+kecData.forEach(d => {
+  const isH = d.cluster === 'H-FSG'
+  const color = isH ? '#27ae60' : '#e74c3c'
+  const border = isH ? '#1a7a40' : '#a93226'
+  const sz = isH ? 11 : 8
+  const circle = L.circleMarker([d.lat, d.lng], {
+    radius: sz/2,
+    fillColor: color,
+    color: border,
+    weight: 1.5,
+    opacity: 1,
+    fillOpacity: isH ? 0.9 : 0.7,
+  })
+  circle.bindPopup(`
+    <div style="font-family:'Plus Jakarta Sans',sans-serif;min-width:190px">
+      <div style="font-weight:800;font-size:.92rem;color:#0a2e1a;margin-bottom:.3rem;text-transform:capitalize">${d.kecamatan}</div>
+      <div style="font-size:.78rem;color:#666;margin-bottom:.4rem">📍 ${d.kabupaten}</div>
+      <div style="display:inline-block;background:${isH?'#d4edda':'#fde8e8'};color:${isH?'#145a28':'#8b1515'};border-radius:99px;padding:.15rem .65rem;font-size:.72rem;font-weight:700;margin-bottom:.5rem">${d.cluster}</div>
+      <div style="font-size:.81rem;color:#555">
+        <b>Est. IKP:</b> ${d.ikp}<br/>
+        <b>Status:</b> ${isH?'✅ Ketahanan pangan tinggi':'⚠️ Perlu penanganan'}
+      </div>
+    </div>
+  `,{maxWidth:220})
+  circle.on('mouseover',function(){this.openPopup()})
+  circle.addTo(map)
+})
+
+// Legend
+const legend = L.control({position:'bottomright'})
+legend.onAdd = function(){
+  const div = L.DomUtil.create('div')
+  div.style.cssText = 'background:rgba(255,255,255,.95);padding:12px 16px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);font-family:Plus Jakarta Sans,sans-serif;font-size:12px;min-width:170px'
+  div.innerHTML = `
+    <div style="font-weight:800;margin-bottom:8px;color:#0a2e1a">Legenda Klaster</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#27ae60;border:2px solid #1a7a40"></span>
+      <span><b>H-FSG</b> — Aman Pangan (60 kec)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e74c3c;border:2px solid #a93226"></span>
+      <span><b>L-FSG</b> — Rawan Pangan (512 kec)</span>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:#888">Total: 572 kecamatan</div>
+  `
+  return div
+}
+legend.addTo(map)
+</script>
+</body>
+</html>
